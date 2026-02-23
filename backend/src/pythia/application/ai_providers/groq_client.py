@@ -48,23 +48,31 @@ class GroqClient:
             f"Output JSON ONLY with action (BUY/SELL/HOLD), confidence (0.0-1.0) as float, reason (<280 chars), and pair '{pair}'."
         )
         
-        await self.rate_limiter.wait()
+        # Phase 5: Production Hardening - Retry Logic with backoff
+        max_retries = 3
+        retry_delay = 2.0
         
-        try:
-            chat_completion = await self.client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": "You are an AI trading expert. You only output valid JSON representing a TradingSignal."},
-                    {"role": "user", "content": prompt}
-                ],
-                model="llama3-8b-8192",  # Default fast model, o mixtral-8x7b-32768
-                response_format={"type": "json_object"},
-                temperature=0.1
-            )
-            
-            content = chat_completion.choices[0].message.content
-            # Il pydantic validator (Confidence Gate) agirà automaticamente qui
-            return TradingSignal.model_validate_json(content)
-            
-        except Exception as e:
-            logger.error(f"Errore generazione segnale Groq: {e}")
-            return TradingSignal(action="HOLD", confidence=0.0, pair=pair, reason=f"API_ERROR: {str(e)[:100]}")
+        for attempt in range(max_retries):
+            try:
+                await self.rate_limiter.wait()
+                
+                chat_completion = await self.client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": "You are an AI trading expert. You only output valid JSON representing a TradingSignal."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    model="llama3-8b-8192",
+                    response_format={"type": "json_object"},
+                    temperature=0.1
+                )
+                
+                content = chat_completion.choices[0].message.content
+                return TradingSignal.model_validate_json(content)
+                
+            except Exception as e:
+                logger.warning(f"Tentativo {attempt + 1}/{max_retries} fallito per {pair}: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay * (2 ** attempt)) # Exponential backoff
+                else:
+                    logger.error(f"Errore generazione segnale Groq dopo {max_retries} tentativi: {e}")
+                    return TradingSignal(action="HOLD", confidence=0.0, pair=pair, reason=f"API_ERROR: {str(e)[:100]}")
