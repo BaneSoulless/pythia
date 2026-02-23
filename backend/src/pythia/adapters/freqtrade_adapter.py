@@ -60,10 +60,24 @@ class FreqtradeStrategy(IStrategy):
         """Call async provider in a synchronous Thread context for Freqtrade DataFrame map."""
         future = asyncio.run_coroutine_threadsafe(self.groq_client.get_signal(pair, price, rsi, ema_fast, ema_slow), self._loop)
         try:
-            return future.result(timeout=5.0)
+            signal = future.result(timeout=5.0)
+            logger.info(f"Groq Signal for {pair}: {signal.action} (Confidence: {signal.confidence})")
+            return signal
         except Exception as e:
             logger.error(f'Timeout o errore AI signal proxy: {e}')
             return TradingSignal(action='HOLD', confidence=0.0, pair=pair, reason='TIMEOUT')
+
+    def emit_trade_event(self, pair: str, action: str, price: float, confidence: float):
+        """Emit trade event to EventBus for persistence."""
+        from pythia.core.event_bus import emit, EventType
+        data = {
+            "pair": pair,
+            "action": action,
+            "price": price,
+            "confidence": confidence,
+            "timestamp": pd.Timestamp.now().isoformat()
+        }
+        asyncio.run_coroutine_threadsafe(emit(EventType.TRADE_EXECUTED, data, source="freqtrade_adapter"), self._loop)
 
     def populate_indicators(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
         import ta
@@ -86,6 +100,7 @@ class FreqtradeStrategy(IStrategy):
             if ai_signal.action == 'BUY' and ai_signal.confidence >= 0.5:
                 if dataframe.iloc[i]['rsi'] < 70 and dataframe.iloc[i]['ema_fast'] > dataframe.iloc[i]['ema_slow']:
                     dataframe.at[i, 'enter_long'] = 1
+                    self.emit_trade_event(metadata['pair'], "BUY", dataframe.iloc[i]['close'], ai_signal.confidence)
         return dataframe
 
     def populate_exit_trend(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
@@ -99,6 +114,7 @@ class FreqtradeStrategy(IStrategy):
             ai_signal = self.get_ai_signal(metadata['pair'], dataframe.iloc[i]['close'], dataframe.iloc[i]['rsi'], dataframe.iloc[i]['ema_fast'], dataframe.iloc[i]['ema_slow'])
             if ai_signal.action == 'SELL' and ai_signal.confidence >= 0.7:
                 dataframe.at[i, 'exit_long'] = 1
+                self.emit_trade_event(metadata['pair'], "SELL", dataframe.iloc[i]['close'], ai_signal.confidence)
         return dataframe
 
 def start_freqtrade_bot():

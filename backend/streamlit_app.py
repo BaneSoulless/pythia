@@ -18,15 +18,32 @@ def fetch_mock_kpis():
     }
 
 def fetch_real_trades():
-    """Query SQLite EventStore for recent trades."""
+    """Query SQLite EventStore for recent trades from event_log."""
     if not os.path.exists(DB_PATH):
-        return pd.DataFrame()  # Empty if DB not initialized
+        return pd.DataFrame()
     
     conn = sqlite3.connect(DB_PATH)
-    query = "SELECT timestamp, pair, action, pnl, confidence FROM trade_events ORDER BY timestamp DESC LIMIT 10"
+    # Query the event_log table which uses JSON for data
+    query = """
+    SELECT created_at as Time, stream_id as Pair, event_type as Action, data 
+    FROM event_log 
+    WHERE event_type = 'trade.executed'
+    ORDER BY id DESC LIMIT 20
+    """
     df = pd.read_sql_query(query, conn)
     conn.close()
-    return df
+    
+    if df.empty:
+        return df
+        
+    # Flatten JSON data for UI
+    import json
+    df['Confidence'] = df['data'].apply(lambda x: json.loads(x).get('confidence', 0.0) if isinstance(x, str) else x.get('confidence', 0.0))
+    df['Price'] = df['data'].apply(lambda x: json.loads(x).get('price', 0.0) if isinstance(x, str) else x.get('price', 0.0))
+    df['Action'] = df['data'].apply(lambda x: json.loads(x).get('action', 'HOLD') if isinstance(x, str) else x.get('action', 'HOLD'))
+    df['Reason'] = df.apply(lambda row: f"Executed at {row['Price']}", axis=1)
+    
+    return df[['Time', 'Pair', 'Action', 'Confidence', 'Reason']]
 
 def fetch_mock_signals():
     # Use real trades if available, otherwise mock for UI dev
