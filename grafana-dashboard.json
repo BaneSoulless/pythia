@@ -1,0 +1,103 @@
+{
+    "dashboard": {
+        "title": "AI Trading Bot Dashboard",
+        "panels": [
+            {
+                "title": "Portfolio Value Over Time",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "trading_bot_portfolio_value",
+                        "legendFormat": "Portfolio {{portfolio_id}}"
+                    }
+                ]
+            },
+            {
+                "title": "Trade Distribution",
+                "type": "piechart",
+                "targets": [
+                    {
+                        "expr": "sum by (side) (trading_bot_trades_total)"
+                    }
+                ]
+            },
+            {
+                "title": "Profit/Loss Distribution",
+                "type": "histogram",
+                "targets": [
+                    {
+                        "expr": "trading_bot_trade_pnl"
+                    }
+                ]
+            },
+            {
+                "title": "AI Model Confidence",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "trading_bot_ai_confidence"
+                    }
+                ]
+            },
+            {
+                "title": "Exploration Rate (Epsilon)",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "trading_bot_ai_epsilon"
+                    }
+                ]
+            },
+            {
+                "title": "API Request Rate",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(trading_bot_api_requests_total[5m])"
+                    }
+                ]
+            },
+            {
+                "title": "API Response Time",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "histogram_quantile(0.95, trading_bot_api_request_duration_seconds)"
+                    }
+                ]
+            },
+            {
+                "title": "Error Rate",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(trading_bot_errors_total[5m])"
+                    }
+                ]
+            },
+            {
+                "title": "Risk Limit Violations",
+                "type": "stat",
+                "targets": [
+                    {
+                        "expr": "sum(trading_bot_risk_limit_violations_total)"
+                    }
+                ]
+            },
+            {
+                "title": "Market Data Fetch Success Rate",
+                "type": "gauge",
+                "targets": [
+                    {
+                        "expr": "sum(rate(trading_bot_market_data_fetches_total{status=\"success\"}[5m])) / sum(rate(trading_bot_market_data_fetches_total[5m])) * 100"
+                    }
+                ]
+            }
+        ],
+        "refresh": "10s",
+        "time": {
+            "from": "now-1h",
+            "to": "now"
+        }
+    }
+}

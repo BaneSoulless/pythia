@@ -1,0 +1,39 @@
+{
+    "system": {
+        "log_level": "INFO",
+        "ports": {
+            "execution": 5555,
+            "strategy": 5556,
+            "data": 5557
+        }
+    },
+    "exchange": {
+        "name": "binance",
+        "sandbox_mode": true,
+        "api_key": "",
+        "secret": "",
+        "options": {
+            "defaultType": "spot"
+        }
+    },
+    "paper_trading": {
+        "enabled": true,
+        "initial_balance": 1000.0,
+        "currency": "EUR",
+        "max_position_size_pct": 0.1,
+        "commission_rate": 0.001
+    },
+    "strategy": {
+        "name": "Hybrid_RSI_MACD_Transformer",
+        "rsi_length": 14,
+        "rsi_buy": 30,
+        "rsi_sell": 70,
+        "macd_fast": 12,
+        "macd_slow": 26,
+        "macd_signal": 9,
+        "timeframe": "1m"
+    },
+    "data": {
+        "buffer_size": 1000
+    }
+}

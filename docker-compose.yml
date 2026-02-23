@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # --- CORE CLUSTER ---
+  core:
+    build: .
+    container_name: neural_core
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - PROMETHEUS_PORT=9090
+    ports:
+      - "5555-5557:5555-5557" # ZMQ
+      - "9090:9090"           # Metrics
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2.00'
+          memory: 2G
+
+  # --- INTERFACE BRIDGE ---
+  # Assuming bridge runs in core container via nexus_launcher but here separated conceptually
+  # In current nexus_launcher, bridge runs as subprocess.
+  # So core handles bridge ports (8000).
+  # We map 8000.
+    ports:
+      - "8000:8000"
+
+  # --- INFRASTRUCTURE ---
+  redis:
+    image: redis:alpine
+    container_name: redis_hot_state
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus_observer
+    volumes:
+      - ./architecture/infrastructure/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9091:9090"
+    restart: always
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana_viz
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: always
+
+volumes:
+  redis_data:
+  grafana_data:
