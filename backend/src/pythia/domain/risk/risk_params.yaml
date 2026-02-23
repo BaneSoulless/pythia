@@ -1,0 +1,31 @@
+# Risk Parameters
+version: "1.0"
+global_limits:
+  max_open_positions: 5
+  max_portfolio_heat: 0.20  # Max 20% of portfolio at risk
+  max_daily_drawdown: 0.05  # Max 5% loss per day
+  max_leverage: 3.0
+
+position_sizing:
+  strategy: "켈리_fractional"
+  kelly_fraction: 0.5
+  min_position_size_usd: 100
+  max_position_size_pct: 0.10 # Max 10% of portfolio per trade
+
+stop_loss_rules:
+  default_atr_multiplier: 2.0
+  trailing_stop_activation_pct: 0.02
+  trailing_stop_distance_pct: 0.01
+  max_stop_loss_pct: 0.05
+
+take_profit_rules:
+  partial_take_profit_levels: [0.03, 0.05, 0.10]
+  partial_take_profit_pcts: [0.3, 0.3, 0.4]
+  dynamic_tp_enabled: true
+
+asset_specific_overrides:
+  BTC/USDT:
+    max_position_size_pct: 0.15
+    max_leverage: 5.0
+  ETH/USDT:
+    max_position_size_pct: 0.15

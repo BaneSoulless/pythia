@@ -1,0 +1,44 @@
+# Signal Schema
+version: "1.0"
+signal_types:
+  - id: "MOMENTUM_BREAKOUT"
+    confidence_threshold: 0.85
+    timeframes: ["15m", "1h", "4h"]
+    required_indicators:
+      - "RSI"
+      - "MACD"
+      - "BollingerBands"
+    validation_rules:
+      min_volume_multiplier: 1.5
+      trend_alignment: true
+
+  - id: "MEAN_REVERSION"
+    confidence_threshold: 0.80
+    timeframes: ["5m", "15m"]
+    required_indicators:
+      - "RSI"
+      - "VWAP"
+    validation_rules:
+      distance_from_vwap_pct: 2.0
+      z_score_threshold: 2.5
+
+  - id: "VOLATILITY_EXPANSION"
+    confidence_threshold: 0.75
+    timeframes: ["1h", "1d"]
+    required_indicators:
+      - "ATR"
+      - "KeltnerChannels"
+    validation_rules:
+      atr_multiplier: 2.0
+      squeeze_release: true
+
+fields:
+  timestamp: "datetime"
+  symbol: "string"
+  signal_type: "string"
+  direction: "enum: [BUY, SELL]"
+  confidence: "float"
+  entry_price: "float"
+  stop_loss: "float"
+  take_profit: "float"
+  metadata: "dict"
