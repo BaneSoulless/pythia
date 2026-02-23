@@ -2,7 +2,7 @@ import pytest
 import asyncio
 from unittest.mock import Mock, AsyncMock
 from fastapi import WebSocket
-from app.services.websocket_manager import ConnectionManager
+from pythia.application.websocket_manager import ConnectionManager
 
 @pytest.fixture
 def connection_manager():
@@ -34,6 +34,6 @@ async def test_subscribe_portfolio(connection_manager, mock_websocket):
 @pytest.mark.asyncio
 async def test_broadcast(connection_manager, mock_websocket):
     await connection_manager.connect(mock_websocket)
-    message = {"type": "test", "data": "hello"}
+    message = {'type': 'test', 'data': 'hello'}
     await connection_manager.broadcast(message)
     mock_websocket.send_json.assert_called_with(message)

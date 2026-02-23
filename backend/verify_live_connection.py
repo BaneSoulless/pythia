@@ -20,7 +20,7 @@ backend_dir = os.path.dirname(current_dir)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from app.core.config import settings
+from pythia.core.config import settings
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [LIVE-TEST] %(levelname)s: %(message)s')

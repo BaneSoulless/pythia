@@ -29,7 +29,7 @@ if os.path.exists(repo_path):
     recursive_dependency_injector(repo_path)
 
 # IMPORT SISTEMA (Infrastructure)
-from app.infrastructure.messaging.system_bus import SystemBus, bus_listener
+from pythia.infrastructure.messaging.system_bus import SystemBus, bus_listener
 
 def load_config() -> Dict[str, Any]:
     # Look for config in root
@@ -50,7 +50,7 @@ def load_config() -> Dict[str, Any]:
 def run_data_layer(bus_queue, config):
     print("DEBUG: Launching Market Data Layer...")
     try:
-        from app.domain.market_data.service import run_service
+        from pythia.domain.market_data.service import run_service
         run_service(config)
     except Exception as e:
         print(f"CRITICAL ERROR in Data Layer: {e}")
@@ -59,17 +59,17 @@ def run_data_layer(bus_queue, config):
 
 # --- PROCESSO COGNITIVO (AGENTI) ---
 def run_cognitive_layer(bus_queue, config):
-    from app.domain.cognitive.service import run_service
+    from pythia.domain.cognitive.service import run_service
     run_service(config)
 
 # --- PROCESSO STRATEGIA ---
 def run_strategy_layer(bus_queue, config):
-    from app.domain.strategy.service import run_service
+    from pythia.domain.strategy.service import run_service
     run_service(config)
 
 # --- PROCESSO ESECUZIONE ---
 def run_execution_layer(bus_queue, config):
-    from app.domain.execution.service import run_service
+    from pythia.domain.execution.service import run_service
     run_service(config)
 
 

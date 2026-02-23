@@ -21,8 +21,8 @@ backend_dir = os.path.dirname(current_dir)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from app.domain.execution.service import ExecutionService
-from app.domain.market_data.service import MarketDataService
+from pythia.domain.execution.service import ExecutionService
+from pythia.domain.market_data.service import MarketDataService
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [SYSTEM] %(levelname)s: %(message)s')

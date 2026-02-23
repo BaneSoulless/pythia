@@ -21,10 +21,10 @@ backend_dir = os.path.dirname(current_dir)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from app.core.circuit_breaker import CircuitBreaker
-from app.core.idempotency import IdempotencyLayer
-from app.core.saga import SagaCoordinator
-from app.infrastructure.event_store import EventStore, EventLog
+from pythia.core.circuit_breaker import CircuitBreaker
+from pythia.core.idempotency import IdempotencyLayer
+from pythia.core.saga import SagaCoordinator
+from pythia.infrastructure.event_store import EventStore, EventLog
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
