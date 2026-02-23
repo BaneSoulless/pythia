@@ -1,0 +1,30 @@
+Metadata-Version: 2.4
+Name: pythia
+Version: 3.1.0
+Summary: AI Trading Bot with Domain-Driven Design
+Author: Fabrizio Marzano
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.109.0
+Requires-Dist: uvicorn[standard]>=0.27.0
+Requires-Dist: sqlalchemy>=2.0.0
+Requires-Dist: alembic>=1.13.0
+Requires-Dist: pydantic>=2.6.0
+Requires-Dist: pydantic-settings>=2.1.0
+Requires-Dist: redis>=5.0.0
+Requires-Dist: pyzmq>=25.1.0
+Requires-Dist: freqtrade>=2024.11
+Requires-Dist: groq>=0.9.0
+Requires-Dist: streamlit>=1.32.0
+Requires-Dist: ta>=0.11.0
+Requires-Dist: fastapi-cb>=0.2.0
+Requires-Dist: eventsourcing>=9.2.14
+Requires-Dist: weaviate-client>=4.4.4
+Requires-Dist: chromadb>=0.4.24
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: ruff>=0.2.0; extra == "dev"
+Provides-Extra: prod
+Requires-Dist: prometheus-client>=0.19.0; extra == "prod"
+Requires-Dist: sentry-sdk>=1.40.0; extra == "prod"

@@ -24,7 +24,7 @@
         "pair_blacklist": []
     },
     "strategy": "FreqtradeStrategy",
-    "strategy_path": "backend/app/adapters/",
+    "strategy_path": "src/pythia/adapters/",
     "datadir": "user_data/data/binance",
     "user_data_dir": "user_data"
 }
