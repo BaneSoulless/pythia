@@ -14,6 +14,29 @@
 ✅ **Risk Management** - Stop-loss, take-profit, position sizing  
 ✅ **Portfolio Management** - Real-time tracking and analytics
 
+## Production Deployment
+
+Pythia is optimized for containerized production environments.
+
+### 1. Prerequisite Config
+Ensure your `.env` is configured with a valid `GROQ_API_KEY`.
+
+### 2. Launching the Stack
+Execute the standard Docker Compose command to bring up the Backend, Prometheus, and Grafana:
+```bash
+docker-compose up --build -d
+```
+
+### 3. Monitoring
+- **Prometheus**: Accessible at `http://localhost:9091` for raw metric queries.
+- **Grafana**: Accessible at `http://localhost:3000` (Default password: `pythia_admin`). 
+  - Import the dashboard from `monitoring/grafana_dashboard.json`.
+
+### 4. CI/CD Pipeline
+GitHub Actions is pre-configured to:
+- Run all tests on pull requests.
+- Build and push the latest image to GitHub Container Registry on merge to `main`.
+
 ### AI & Intelligence
 ✅ **Multi-Model Ensemble** - 7 AI models (GPT-5, Gemini, DeepSeek, Claude, Grok)  
 ✅ **Technical Analysis** - 4 specialized agents  
