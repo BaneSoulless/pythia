@@ -9,14 +9,14 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# 2. Install dependencies (assuming venv active or containerized)
-pip install -q -r requirements.txt
+# 2. Install dependencies (using pyproject.toml)
+pip install -q -e .
 
 # 3. Initialize SQLite DB
 python -c "import sqlite3; conn = sqlite3.connect('pythia_test.db'); conn.execute('CREATE TABLE IF NOT EXISTS trade_events (timestamp TEXT, pair TEXT, action TEXT, pnl REAL, confidence REAL)'); conn.close()"
 
 # 4. Start Freqtrade (background)
-python -c "from app.adapters.freqtrade_adapter import start_freqtrade_bot; start_freqtrade_bot()" &
+python -c "from pythia.adapters.freqtrade_adapter import start_freqtrade_bot; start_freqtrade_bot()" &
 FREQTRADE_PID=$!
 
 # 5. Launch Streamlit UI
