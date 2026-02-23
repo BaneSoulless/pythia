@@ -1,0 +1,20 @@
+version: "1.0"
+signal:
+  action:
+    type: enum
+    values: [BUY, SELL, HOLD]
+    required: true
+  confidence:
+    type: float
+    range: [0.0, 1.0]
+    gate: "< 0.5 → force HOLD via model_validator"
+  pair:
+    type: string
+    pattern: "^[A-Z]+/[A-Z]+$"
+  stop_loss_pct:
+    type: float
+    range: [0.005, 0.05]
+    default: 0.02
+  reason:
+    type: string
+    max_length: 280

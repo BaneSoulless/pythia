@@ -1,0 +1,30 @@
+{
+    "max_open_trades": 3,
+    "stake_currency": "USDT",
+    "stake_amount": 50,
+    "dry_run": true,
+    "dry_run_wallet": 1000,
+    "exchange": {
+        "name": "binance",
+        "key": "${BINANCE_TESTNET_API_KEY}",
+        "secret": "${BINANCE_TESTNET_SECRET}",
+        "ccxt_config": {
+            "enableRateLimit": true,
+            "urls": {
+                "api": {
+                    "public": "https://testnet.binance.vision/api",
+                    "private": "https://testnet.binance.vision/api"
+                }
+            }
+        },
+        "pair_whitelist": [
+            "BTC/USDT",
+            "ETH/USDT"
+        ],
+        "pair_blacklist": []
+    },
+    "strategy": "FreqtradeStrategy",
+    "strategy_path": "backend/app/adapters/",
+    "datadir": "user_data/data/binance",
+    "user_data_dir": "user_data"
+}

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pythia"
+version = "3.1.0"
+description = "AI Trading Bot with Domain-Driven Design"
+authors = [{name = "Fabrizio Marzano"}]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.1.0",
+    "redis>=5.0.0",
+    "pyzmq>=25.1.0",
+    "freqtrade>=2024.11",
+    "groq>=0.9.0",
+    "streamlit>=1.32.0",
+    "ta>=0.11.0",
+    "fastapi-cb>=0.2.0",
+    "eventsourcing>=9.2.14",
+    "weaviate-client>=4.4.4",
+    "chromadb>=0.4.24"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0", "pytest-cov>=4.1.0", "ruff>=0.2.0"]
+prod = ["prometheus-client>=0.19.0", "sentry-sdk>=1.40.0"]
+
+[tool.setuptools.packages.find]
+where = ["backend/src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["backend/src"]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"

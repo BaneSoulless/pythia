@@ -51,3 +51,5 @@ temp_repos/
 # Tool configuration
 .antigravity/
 .amazonq/
+
+backend/extracted_code.json

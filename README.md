@@ -232,3 +232,32 @@ This project is licensed under the MIT License.
 **Version**: 3.0.0  
 **Last Updated**: 2025-11-22  
 **Status**: Production Ready (Paper Trading)
+
+## Dual-Mode Architecture
+
+PYTHIA supports **Test Mode** (zero-cost MVP) and **Production Mode** (enterprise-grade).
+
+### Test Mode
+- **Signal Provider**: Groq API (free 30 RPM)
+- **Execution**: Freqtrade + Binance Testnet
+- **UI**: Streamlit (localhost:8501)
+- **Infrastructure**: SQLite, ChromaDB local, in-memory caching
+- **Cost**: €0/month
+
+### Production Mode
+- **Signal Provider**: 7-model ensemble via Puter.com
+- **Execution**: FastAPI + ZeroMQ SystemBus
+- **UI**: React + Streamlit
+- **Infrastructure**: PostgreSQL, Redis, Weaviate Cloud
+- **Cost**: ~€20/month
+
+### Mode Switching
+Edit \ackend/app/core/risk_params.yaml\:
+\\\yaml
+execution_mode: "test"  # or "production"
+\\\`n
+### Quick Start (Test Mode)
+\\\ash
+chmod +x backend/pythia_test.sh
+./backend/pythia_test.sh
+\\\`nAccess Streamlit UI: http://localhost:8501

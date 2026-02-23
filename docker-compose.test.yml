@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  pythia-test:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: pythia-mvp-test
+    ports:
+      - "8501:8501" # Streamlit
+    volumes:
+      - ./backend:/app
+      - ./pythia_test.db:/app/pythia_test.db
+    env_file:
+      - ./backend/.env
+    command: [ "bash", "-c", "chmod +x backend/pythia_test.sh && ./backend/pythia_test.sh" ]

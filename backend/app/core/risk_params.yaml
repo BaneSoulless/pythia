@@ -1,0 +1,29 @@
+execution_mode: "test"  # "test" or "production"
+
+test_mode:
+  signal_provider: "groq"
+  execution_engine: "freqtrade"
+  ui: ["streamlit"]
+  broker: "binance_testnet"
+  event_sourcing: "sqlite"
+  circuit_breaker: "simple_decorator"
+  idempotency: "in_memory"
+  vector_db: "chromadb_local"
+
+production_mode:
+  signal_provider: "ensemble"
+  execution_engine: "fastapi_zeromq"
+  ui: ["react", "streamlit"]
+  broker: "binance_live"
+  event_sourcing: "postgresql_eventstore"
+  circuit_breaker: "fastapi_cb"
+  idempotency: "redis_lua"
+  vector_db: "weaviate_cloud"
+
+dry_run: true
+max_drawdown_percent: 10.0
+stake_amount: 50
+max_open_trades: 3
+confidence_threshold: 0.5
+stop_loss_cap: 0.05
+take_profit_default: 0.03
