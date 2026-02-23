@@ -47,8 +47,33 @@ class GroqClient:
             f"EMA signals: (fast: {ema_fast}, slow: {ema_slow}). "
             f"Output JSON ONLY with action (BUY/SELL/HOLD), confidence (0.0-1.0) as float, reason (<280 chars), and pair '{pair}'."
         )
-        
-        # Phase 5: Production Hardening - Retry Logic with backoff
+        return await self._execute_groq_request(prompt, pair)
+
+    async def get_stock_signal(
+        self, 
+        symbol: str, 
+        price: float, 
+        earnings_sentiment: str, 
+        news_summary: str,
+        rsi: float = 50.0,
+        macd_signal: str = "neutral"
+    ) -> TradingSignal:
+        """Enhanced prompt for stock-specific analysis (Earnings, News, Technicals)."""
+        if not self.client:
+            return TradingSignal(action="HOLD", confidence=0.0, pair=symbol, reason="NO_API_KEY")
+
+        prompt = (
+            f"Analyze US Stock {symbol}. \n"
+            f"Price: ${price}, RSI: {rsi}, MACD: {macd_signal}. \n"
+            f"Earnings Sentiment: {earnings_sentiment}. \n"
+            f"Recent News Recap: {news_summary}. \n"
+            f"Factor in earnings quality and news volatility. "
+            f"Output JSON ONLY: action (BUY/SELL/HOLD), confidence (0.0-1.0), reason (<280 chars), and pair '{symbol}'."
+        )
+        return await self._execute_groq_request(prompt, symbol)
+
+    async def _execute_groq_request(self, prompt: str, identifier: str) -> TradingSignal:
+        """Internal executor for Groq requests with retries and rate limiting."""
         max_retries = 3
         retry_delay = 2.0
         
@@ -70,9 +95,9 @@ class GroqClient:
                 return TradingSignal.model_validate_json(content)
                 
             except Exception as e:
-                logger.warning(f"Tentativo {attempt + 1}/{max_retries} fallito per {pair}: {e}")
+                logger.warning(f"Tentativo {attempt + 1}/{max_retries} fallito per {identifier}: {e}")
                 if attempt < max_retries - 1:
                     await asyncio.sleep(retry_delay * (2 ** attempt)) # Exponential backoff
                 else:
                     logger.error(f"Errore generazione segnale Groq dopo {max_retries} tentativi: {e}")
-                    return TradingSignal(action="HOLD", confidence=0.0, pair=pair, reason=f"API_ERROR: {str(e)[:100]}")
+                    return TradingSignal(action="HOLD", confidence=0.0, pair=identifier, reason=f"API_ERROR: {str(e)[:100]}")

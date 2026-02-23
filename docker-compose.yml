@@ -3,41 +3,55 @@ version: '3.8'
 services:
   pythia-backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: pythia_nexus
+    env_file:
+      - .env
     environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
-      - BINANCE_TESTNET_SECRET=${BINANCE_TESTNET_SECRET}
       - EXECUTION_MODE=production
       - DATABASE_URL=sqlite:///./data/pythia_prod.db
+      - SQLITE_DB_PATH=/app/data/pythia_prod.db
     ports:
       - "8501:8501"
       - "9090:9090"
     volumes:
       - ./data:/app/data
+    networks:
+      - pythia-network
     restart: always
 
   prometheus:
     image: prom/prometheus:latest
     container_name: pythia_observer
+    depends_on:
+      - pythia-backend
     ports:
       - "9091:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - pythia-network
     restart: always
 
   grafana:
     image: grafana/grafana:latest
     container_name: pythia_viz
+    depends_on:
+      - prometheus
     ports:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=pythia_admin
     volumes:
       - grafana_data:/var/lib/grafana
+    networks:
+      - pythia-network
     restart: always
+
+networks:
+  pythia-network:
+    driver: bridge
 
 volumes:
   grafana_data:

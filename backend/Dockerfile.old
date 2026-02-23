@@ -11,22 +11,22 @@ RUN apt-get update && apt-get install -y \
 
 # Copy build config first
 COPY pyproject.toml /app/
-COPY backend/src /app/backend/src/
+COPY backend/src /app/src/
 
-# Install the package in editable mode
-# Note: pyproject.toml points to backend/src for package discovery
-RUN pip install --no-cache-dir -e .
+# Install the package in editable mode or normally
+RUN pip install --no-cache-dir -e ./src/
 
 # Create necessary directories
 RUN mkdir -p /app/data /app/logs
 
 # Environment variables
-ENV PYTHONPATH=/app/backend/src
+ENV PYTHONPATH=/app/src
 ENV EXECUTION_MODE=production
 ENV STREAMLIT_SERVER_PORT=8501
 
 # Expose ports for UI and Metrics
 EXPOSE 8501 9090
 
-# Default entrypoint: Run the Pythia Orchestrator (Supervisor)
-CMD ["python", "-m", "pythia.infrastructure.orchestrator"]
+# Default entrypoint: Run Streamlit for the MVP UI
+# (In production Docker, we can also launch the background strategy)
+CMD ["streamlit", "run", "src/pythia/adapters/streamlit_app.py", "--server.address", "0.0.0.0"]

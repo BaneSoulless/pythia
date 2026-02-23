@@ -7,7 +7,7 @@ from datetime import datetime
 import sqlite3
 import os
 
-DB_PATH = os.getenv("SQLITE_DB_PATH", "pythia_test.db")
+DB_PATH = os.path.abspath(os.getenv("SQLITE_DB_PATH", "/app/data/pythia_prod.db"))
 
 def fetch_mock_kpis():
     return {
