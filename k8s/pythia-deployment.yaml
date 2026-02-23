@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pythia-backend
+  namespace: trading
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pythia
+  template:
+    metadata:
+      labels:
+        app: pythia
+    spec:
+      containers:
+      - name: pythia
+        image: pythia-backend:latest
+        ports:
+        - containerPort: 8000
+        - containerPort: 9090
+        env:
+        - name: ENV
+          value: "production"
+        resources:
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pythia-backend
+  namespace: trading
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+  - port: 9090
+    targetPort: 9090
+  selector:
+    app: pythia

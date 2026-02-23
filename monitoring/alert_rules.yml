@@ -1,0 +1,33 @@
+groups:
+  - name: pythia_prediction_markets
+    interval: 30s
+    rules:
+      - alert: HighValueArbitrageDetected
+        expr: pythia_arbitrage_roi_percent > 5.0
+        for: 1m
+        labels:
+          severity: info
+          component: arbitrage_detector
+        annotations:
+          summary: "High-value arbitrage opportunity detected"
+          description: "Arbitrage opportunity with {{ $value }}% ROI detected on {{ $labels.platform_pair }}"
+
+      - alert: CircuitBreakerOpen
+        expr: pythia_circuit_breaker_state{state="OPEN"} == 1
+        for: 2m
+        labels:
+          severity: warning
+          component: circuit_breaker
+        annotations:
+          summary: "Circuit breaker is OPEN for {{ $labels.platform }}"
+          description: "API failures have triggered circuit breaker for {{ $labels.platform }}"
+
+      - alert: LowPredictionMarketBalance
+        expr: pythia_prediction_market_balance_usdc < 100
+        for: 5m
+        labels:
+          severity: warning
+          component: balance_monitor
+        annotations:
+          summary: "Low balance on {{ $labels.platform }}"
+          description: "Balance is ${{ $value }} on {{ $labels.platform }}, consider depositing funds"

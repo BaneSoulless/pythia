@@ -2,13 +2,19 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - localhost:9093
+
+rule_files:
+  - "/etc/prometheus/alert_rules.yml"
+
 scrape_configs:
-  - job_name: 'trading-bot-backend'
+  - job_name: 'pythia-backend'
     static_configs:
-      - targets: ['backend:8000']
-    metrics_path: '/metrics'
-    
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-`
+      - targets: ['pythia-backend:9090']
+        labels:
+          service: 'pythia'
+          component: 'backend'
