@@ -29,8 +29,8 @@ dependencies = [
     "pmxt>=1.0.0",
     "alpaca-py>=0.28.0",
     "celery[redis]>=5.4.0",
-    "redis>=5.0.0",
     "flower>=2.0.0",
+    "torch>=2.2.0",
 ]
 
 [project.optional-dependencies]

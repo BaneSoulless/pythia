@@ -29,6 +29,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("PYTHIA-ORCHESTRATOR")
 
+from fastapi.middleware.cors import CORSMiddleware
+from pythia.api.v1.trades import router as trades_router
+from pythia.api.v1.portfolio import router as portfolio_router
+from pythia.api.v1.market_data import router as market_data_router
+from pythia.api.v1.health import router as health_router
 
 def create_api_app() -> FastAPI:
     """Create and configure FastAPI application."""
@@ -37,9 +42,22 @@ def create_api_app() -> FastAPI:
         version="4.0.0",
         description="Multi-asset trading platform with AI-driven signals",
     )
-    app.include_router(health_router)
-    return app
+    
+    # Enable CORS for local Vite dashboard
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
+    app.include_router(health_router)
+    app.include_router(trades_router, prefix="/api/v1/trades", tags=["trades"])
+    app.include_router(portfolio_router, prefix="/api/v1/portfolio", tags=["portfolio"])
+    app.include_router(market_data_router, prefix="/api/v1/market-data", tags=["market-data"])
+    
+    return app
 
 class PythiaSupervisor:
     """Supervises all Pythia services with graceful shutdown."""
