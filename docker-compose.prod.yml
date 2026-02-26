@@ -1,4 +1,21 @@
 services:
+  traefik:
+    image: traefik:v3.2
+    container_name: pythia-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - pythia-network
+    restart: unless-stopped
+
   pythia-backend:
     build:
       context: .
@@ -12,6 +29,8 @@ services:
     environment:
       - ENV=production
       - LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - KALSHI_API_KEY_FILE=/run/secrets/kalshi_api_key
       - KALSHI_KEY_PATH=/run/secrets/kalshi_private_key
       - POLYMARKET_WALLET_KEY_FILE=/run/secrets/polymarket_wallet_key
@@ -22,7 +41,86 @@ services:
       - "8501:8501"
     networks:
       - pythia-network
+    depends_on:
+      - redis
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=PathPrefix(`/api`)"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  pythia-worker-pm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pythia-worker-pm
+    command: >
+      celery -A pythia.infrastructure.celery_app worker -Q pm_scanner -c 2 --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    secrets:
+      - kalshi_api_key
+      - kalshi_private_key
+      - polymarket_wallet_key
+    networks:
+      - pythia-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  pythia-worker-trade:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pythia-worker-trade
+    command: >
+      celery -A pythia.infrastructure.celery_app worker -Q trading -c 4 --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    networks:
+      - pythia-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  pythia-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pythia-beat
+    command: >
+      celery -A pythia.infrastructure.celery_app beat --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - pythia-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: pythia-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - pythia-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   prometheus:
     image: prom/prometheus:latest
@@ -50,6 +148,25 @@ services:
     networks:
       - pythia-network
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=PathPrefix(`/grafana`)"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  flower:
+    image: mher/flower:2.0
+    container_name: pythia-flower
+    command: celery -A pythia.infrastructure.celery_app flower --port=5555
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    ports:
+      - "5555:5555"
+    networks:
+      - pythia-network
+    depends_on:
+      - redis
+    restart: unless-stopped
 
 secrets:
   kalshi_api_key:
@@ -68,3 +185,4 @@ networks:
 volumes:
   prometheus-data:
   grafana-data:
+  redis-data:

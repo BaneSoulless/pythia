@@ -25,8 +25,12 @@ ENV PYTHONPATH=/app/backend/src
 ENV EXECUTION_MODE=production
 ENV STREAMLIT_SERVER_PORT=8501
 
-# Expose ports for UI and Metrics
-EXPOSE 8501 9090
+# Expose ports for API, UI, and Metrics
+EXPOSE 8000 8501 9090
+
+# Health check for container orchestrators
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=15s \
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
 # Default entrypoint: Run the Pythia Orchestrator (Supervisor)
 CMD ["python", "-m", "pythia.infrastructure.orchestrator"]
