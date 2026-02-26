@@ -7,11 +7,31 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SecretsManager:
-    def __init__(self, encryption_key_path: Path = Path(".encryption_key")):
+    """Fernet-based secrets manager with encryption at rest.
+
+    In production, the encryption key MUST be pre-provisioned.
+    Auto-generation is only permitted in development mode.
+    """
+
+    def __init__(
+        self,
+        encryption_key_path: Path = Path(".encryption_key"),
+        allow_key_generation: bool = False,
+    ):
         if not encryption_key_path.exists():
-            key = Fernet.generate_key()
-            encryption_key_path.write_bytes(key)
-            encryption_key_path.chmod(0o600)
+            if allow_key_generation:
+                key = Fernet.generate_key()
+                encryption_key_path.write_bytes(key)
+                encryption_key_path.chmod(0o600)
+                logger.warning(
+                    "[SECRETS] Auto-generated Fernet key at %s — NOT for production use",
+                    encryption_key_path,
+                )
+            else:
+                raise FileNotFoundError(
+                    f"Encryption key not found at {encryption_key_path}. "
+                    "Provision the key or set allow_key_generation=True for dev."
+                )
 
         self.cipher = Fernet(encryption_key_path.read_bytes())
 
@@ -25,8 +45,8 @@ class SecretsManager:
         if not env_path.exists():
             raise FileNotFoundError(f"Encrypted env not found: {env_path}")
 
-        encrypted_data = json.loads(env_path.read_text())
+        encrypted_data = json.loads(env_path.read_text(encoding="utf-8"))
         for key, encrypted_value in encrypted_data.items():
             os.environ[key] = self.decrypt_secret(encrypted_value)
 
-        logger.info(f"✅ Loaded {len(encrypted_data)} secrets")
+        logger.info("Loaded %d secrets", len(encrypted_data))

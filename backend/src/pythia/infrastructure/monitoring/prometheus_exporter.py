@@ -71,9 +71,9 @@ class MetricsExporter:
             try:
                 start_http_server(self.port)
                 self.server_started = True
-                logger.info(f"📊 Prometheus metrics server started on port {self.port}")
-            except Exception as e:
-                logger.error(f"❌ Failed to start Prometheus server: {e}")
+                logger.info("Prometheus metrics server started on port %d", self.port)
+            except OSError as exc:
+                logger.error("Failed to start Prometheus server: %s", exc)
 
     def record_arbitrage_opportunity(self, platform_pair: str, roi: float):
         '''Record detected arbitrage opportunity.'''
@@ -107,8 +107,7 @@ class MetricsExporter:
 
     def record_markets_scanned(self, platform: str, count: int):
         '''Record number of markets scanned.'''
-        for _ in range(count):
-            markets_scanned_total.labels(platform=platform).inc()
+        markets_scanned_total.labels(platform=platform).inc(count)
 
 # Singleton instance
 _metrics_exporter = None

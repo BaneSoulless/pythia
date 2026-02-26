@@ -64,7 +64,7 @@ def get_system_status():
 
 # UI Layout
 st.set_page_config(page_title="PYTHIA Control Plane", page_icon="🤖", layout="wide")
-st.markdown(STYLING, unsafe_allow_view=True)
+st.markdown(STYLING, unsafe_allow_html=True)
 
 st.title("PYTHIA 🤖 Multi-Asset Control Plane")
 st.subheader("Ruthless Optimization Dashboard")
@@ -112,7 +112,7 @@ with col_side:
     <div class="status-card">
         <b>Database:</b><br>{status['Database']}
     </div>
-    """, unsafe_allow_view=True)
+    """, unsafe_allow_html=True)
     
     if st.button("Reset Circuit Breaker"):
         st.success("Circuit breaker manually reset to CLOSED.")
