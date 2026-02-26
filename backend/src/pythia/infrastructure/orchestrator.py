@@ -17,8 +17,12 @@ import threading
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from pythia.api.v1.health import router as health_router
+from pythia.api.v1.trades import router as trades_router
+from pythia.api.v1.portfolio import router as portfolio_router
+from pythia.api.v1.market_data import router as market_data_router
 from pythia.infrastructure.monitoring.prometheus_exporter import get_metrics_exporter
 from pythia.infrastructure.secrets.secrets_manager import SecretsManager
 from pythia.adapters.freqtrade_adapter import FreqtradeStrategy
@@ -28,12 +32,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("PYTHIA-ORCHESTRATOR")
-
-from fastapi.middleware.cors import CORSMiddleware
-from pythia.api.v1.trades import router as trades_router
-from pythia.api.v1.portfolio import router as portfolio_router
-from pythia.api.v1.market_data import router as market_data_router
-from pythia.api.v1.health import router as health_router
 
 def create_api_app() -> FastAPI:
     """Create and configure FastAPI application."""
@@ -174,7 +172,7 @@ class PythiaSupervisor:
             try:
                 logger.debug("[ORCHESTRATOR] Scanning prediction markets...")
 
-                kalshi_raw = adapter.fetch_markets("kalshi", limit=50)
+                kalshi_raw = await adapter.fetch_markets(limit=50, platform="kalshi")
                 kalshi_markets = [
                     PredictionMarket(
                         market_id=m["market_id"],
@@ -190,7 +188,7 @@ class PythiaSupervisor:
 
                 poly_markets = []
                 if os.getenv("POLYMARKET_WALLET_KEY"):
-                    poly_raw = adapter.fetch_markets("polymarket", limit=50)
+                    poly_raw = await adapter.fetch_markets(limit=50, platform="polymarket")
                     poly_markets = [
                         PredictionMarket(
                             market_id=m["market_id"],
