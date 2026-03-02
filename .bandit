@@ -1,0 +1,13 @@
+exclude_dirs:
+  - temp_repos
+  - .venv
+  - .runtime
+  - __pycache__
+  - node_modules
+  - htmlcov
+  - .git
+  - .mypy_cache
+
+skips:
+  - B101  # assert_used — standard in pytest tests
+  - B404  # import_subprocess — subprocess is intentional
