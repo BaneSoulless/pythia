@@ -44,6 +44,7 @@ logs/
 _logs_archive/
 
 # Project-specific transient directories
+temprepos/
 temp_repos/
 .runtime/
 -p/
@@ -53,3 +54,45 @@ temp_repos/
 .amazonq/
 
 backend/extracted_code.json
+
+# Secrets (NEVER commit real keys)
+secrets/
+
+# Legacy files (deleted in NS-1 cleanup)
+architecture/
+main.py
+interface_bridge.py
+nexus_launcher.py
+runtime_bootstrapper.py
+utils.py
+verify_*.py
+force_trade_validation.py
+validate_remediation.py
+system_checks.py
+reset_capital.py
+check_db.py
+stop_and_clean.py
+kill_ports.py
+setup_environment.py
+seed_admin.py
+build_extensions.py
+fix_dependencies.py
+extract_code.py
+analyze_repositories.py
+ingest_core.py
+cloud-init.sh
+setup.ps1
+backend/scheduler_main.py
+
+# Coverage artifacts
+htmlcov/
+.coverage
+backend/htmlcov/
+backend/.coverage
+
+# Ruff cache
+.ruff_cache/
+
+# Pytest cache
+.pytest_cache/
+backend/.pytest_cache/

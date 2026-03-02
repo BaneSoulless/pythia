@@ -3,8 +3,10 @@
 Each task runs in a separate Celery worker process, enabling
 horizontal scaling and fault isolation.
 """
-import os
+
 import logging
+import os
+
 from pythia.infrastructure.celery_app import app
 
 logger = logging.getLogger(__name__)
@@ -31,7 +33,7 @@ def scan_prediction_markets(self):
     try:
         adapter = PmxtAdapter(
             kalshi_api_key=os.getenv("KALSHI_API_KEY"),
-            kalshi_private_key_path=os.getenv("KALSHI_KEY_PATH"),
+            kalshi_private_key_path=os.getenv("KALSHI_PRIVATE_KEY_PATH"),
             polymarket_wallet_key=os.getenv("POLYMARKET_WALLET_KEY"),
         )
         detector = ArbitrageDetector(min_roi=0.015)
@@ -76,9 +78,7 @@ def scan_prediction_markets(self):
                 {"roi": o["roi"], "strategy": o["strategy"]} for o in opportunities
             ]
             if opportunities:
-                logger.info(
-                    "Found %d arbitrage opportunities", len(opportunities)
-                )
+                logger.info("Found %d arbitrage opportunities", len(opportunities))
 
         return result
 
@@ -95,32 +95,35 @@ def scan_prediction_markets(self):
     soft_time_limit=25,
     time_limit=30,
 )
-def execute_multi_asset_trade(self, asset_class: str, symbol: str, side: str, quantity: float):
+def execute_multi_asset_trade(
+    self, asset_class: str, symbol: str, side: str, quantity: float
+):
     """Execute a trade on the appropriate platform.
 
     Dispatches to the correct adapter based on asset_class.
     Triggered by AI signals or manual commands.
     """
     try:
-        logger.info(
-            "Executing %s %s %s qty=%.2f", asset_class, side, symbol, quantity
-        )
+        logger.info("Executing %s %s %s qty=%.2f", asset_class, side, symbol, quantity)
 
         if asset_class == "stocks":
             from pythia.adapters.alpaca_adapter import AlpacaAdapter
+
             adapter = AlpacaAdapter(
                 api_key=os.getenv("ALPACA_API_KEY", ""),
                 secret_key=os.getenv("ALPACA_SECRET_KEY", ""),
             )
             import asyncio
+
             result = asyncio.run(adapter.place_order(symbol, quantity, side))
             return {"status": "executed", "platform": "alpaca", "result": str(result)}
 
         if asset_class == "prediction_markets":
             from pythia.adapters.pmxt_adapter import PmxtAdapter
+
             adapter = PmxtAdapter(
                 kalshi_api_key=os.getenv("KALSHI_API_KEY"),
-                kalshi_private_key_path=os.getenv("KALSHI_KEY_PATH"),
+                kalshi_private_key_path=os.getenv("KALSHI_PRIVATE_KEY_PATH"),
             )
             result = adapter.place_order("kalshi", symbol, side, quantity, 0.0)
             return {"status": "executed", "platform": "kalshi", "result": str(result)}
@@ -144,8 +147,9 @@ def generate_ai_signal(pair: str, price: float, indicators: dict):
     to the event bus for downstream consumption.
     """
     try:
-        from pythia.application.ai_providers.groq_client import GroqClient
         import asyncio
+
+        from pythia.application.ai_providers.groq_client import GroqClient
 
         client = GroqClient()
         signal = asyncio.run(
