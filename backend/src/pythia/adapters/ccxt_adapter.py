@@ -6,7 +6,7 @@ logger = logging.getLogger("PYTHIA-CCXT-ADAPTER")
 
 class CCXTForexAdapter:
     """Adapter for Forex trading using CCXT (e.g., Oanda)."""
-    
+
     def __init__(self, exchange_id: str = 'oanda', config: Optional[Dict[str, Any]] = None):
         self.exchange_id = exchange_id
         # In a real scenario, API keys would be in the config or env
@@ -29,18 +29,18 @@ class CCXTForexAdapter:
         return await self.exchange.fetch_balance()
 
     async def create_order(
-        self, 
-        symbol: str, 
-        order_type: str, 
-        side: str, 
-        amount: float, 
+        self,
+        symbol: str,
+        order_type: str,
+        side: str,
+        amount: float,
         price: Optional[float] = None,
         leverage: int = 1
     ) -> Dict[str, Any]:
         """Place a forex order with leverage management."""
         if leverage > self.max_leverage:
             raise ValueError(f"Leverage {leverage} exceeds maximum allowed ({self.max_leverage})")
-            
+
         # Oanda-specific or standard CCXT creation
         try:
             params = {'leverage': leverage} if leverage > 1 else {}
@@ -57,11 +57,11 @@ class CCXTForexAdapter:
         # This is a placeholder for custom implementation or exchange-specific fetch.
         market = self.exchange.market(symbol)
         info = market.get('info', {})
-        
+
         # Example for Oanda-like structure
         long_swap = float(info.get('long_swap', 0.0))
         short_swap = float(info.get('short_swap', 0.0))
-        
+
         return {
             "long": long_swap,
             "short": short_swap

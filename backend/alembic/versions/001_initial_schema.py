@@ -27,7 +27,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_portfolios_id'), 'portfolios', ['id'], unique=False)
-    
+
     # Positions table
     op.create_table(
         'positions',
@@ -45,7 +45,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_positions_id'), 'positions', ['id'], unique=False)
     op.create_index(op.f('ix_positions_symbol'), 'positions', ['symbol'], unique=False)
-    
+
     # Trades table
     op.create_table(
         'trades',
@@ -65,7 +65,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_trades_id'), 'trades', ['id'], unique=False)
     op.create_index(op.f('ix_trades_symbol'), 'trades', ['symbol'], unique=False)
-    
+
     # Learning experiences table
     op.create_table(
         'learning_experiences',
@@ -79,7 +79,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_learning_experiences_id'), 'learning_experiences', ['id'], unique=False)
-    
+
     # Model checkpoints table
     op.create_table(
         'model_checkpoints',

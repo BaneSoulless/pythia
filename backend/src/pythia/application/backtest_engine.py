@@ -6,8 +6,8 @@ Allows testing trading strategies against historical data
 import logging
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Tuple, Optional
-from datetime import datetime, timedelta
+from typing import Dict, List, Tuple
+from datetime import datetime
 from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
@@ -160,13 +160,13 @@ class BacktestEngine:
 def run_strategy_backtest(strategy_func, historical_data: pd.DataFrame, initial_balance: float=10000.0, **strategy_params) -> BacktestResults:
     """
     Run a backtest with a given strategy function
-    
+
     Args:
         strategy_func: Function that takes (engine, data, **params) and executes trades
         historical_data: DataFrame with columns: timestamp, symbol, open, high, low, close, volume
         initial_balance: Starting balance
         **strategy_params: Additional parameters to pass to strategy
-    
+
     Returns:
         BacktestResults object
     """

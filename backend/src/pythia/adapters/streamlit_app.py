@@ -1,11 +1,8 @@
 import streamlit as st
 import pandas as pd
-import random
 import time
 from datetime import datetime
-import sqlite3
 import os
-import json
 
 # Configuration
 DB_PATH = os.path.abspath(os.getenv("SQLITE_DB_PATH", "/app/data/pythia_prod.db"))
@@ -98,7 +95,7 @@ with col_main:
 with col_side:
     st.subheader("🛡️ Security & Health")
     status = get_system_status()
-    
+
     st.markdown(f"""
     <div class="status-card">
         <b>Secrets Management:</b><br>{status['Secrets']}
@@ -113,7 +110,7 @@ with col_side:
         <b>Database:</b><br>{status['Database']}
     </div>
     """, unsafe_allow_html=True)
-    
+
     if st.button("Reset Circuit Breaker"):
         st.success("Circuit breaker manually reset to CLOSED.")
 

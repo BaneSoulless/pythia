@@ -35,7 +35,7 @@ class UserResponse(BaseModel):
     username: str
     email: str
     is_active: bool
-    
+
     class Config:
         orm_mode = True
 
@@ -50,7 +50,7 @@ class Token(BaseModel):
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """
     Register a new user
-    
+
     - **username**: Unique username
     - **email**: User email address
     - **password**: User password (will be hashed)
@@ -73,10 +73,10 @@ async def login(
 ):
     """
     Login and receive access token
-    
+
     - **username**: Username or email
     - **password**: User password
-    
+
     Returns JWT access token
     """
     user = authenticate_user(db, form_data.username, form_data.password)
@@ -86,16 +86,16 @@ async def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=access_token_expires
     )
-    
+
     logger.info(f"User logged in: {user.username}")
-    
+
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -103,7 +103,7 @@ async def login(
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
     """
     Get current user information
-    
+
     Requires valid JWT token
     """
     return current_user
@@ -113,7 +113,7 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
 async def refresh_token(current_user: User = Depends(get_current_active_user)):
     """
     Refresh access token
-    
+
     Requires valid JWT token, returns new token
     """
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -121,5 +121,5 @@ async def refresh_token(current_user: User = Depends(get_current_active_user)):
         data={"sub": current_user.username},
         expires_delta=access_token_expires
     )
-    
+
     return {"access_token": access_token, "token_type": "bearer"}

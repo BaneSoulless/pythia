@@ -4,8 +4,7 @@ Specialized Trading Agents
 Domain-specific agents for different aspects of trading
 """
 import logging
-from typing import Dict, List, Optional
-from datetime import datetime
+from typing import Dict, List
 import numpy as np
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ class TechnicalAnalysisAgent:
     def analyze_trend(self, prices: List[float]) -> Dict:
         """
         Analyze price trend
-        
+
         Returns:
             Direction (bullish/bearish/neutral), strength (0-1)
         """
@@ -51,7 +50,7 @@ class TechnicalAnalysisAgent:
     def check_bollinger_bands(self, prices: List[float], period: int=20, std_dev: int=2) -> Dict:
         """
         Check Bollinger Bands position
-        
+
         Returns position relative to bands and signals
         """
         if len(prices) < period:
@@ -124,7 +123,7 @@ class RiskManagementAgent:
     def assess_trade_risk(self, portfolio_value: float, position_size: float, symbol_volatility: float) -> Dict:
         """
         Assess risk of a proposed trade
-        
+
         Returns approval and risk metrics
         """
         position_pct = position_size / portfolio_value if portfolio_value > 0 else 0

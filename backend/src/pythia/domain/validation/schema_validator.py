@@ -1,18 +1,19 @@
 import yaml
 from jsonschema import validate, ValidationError
 from pathlib import Path
+from typing import Optional
 import logging
 
 logger = logging.getLogger("PYTHIA-VALIDATOR")
 
 class SchemaValidator:
     """Zero-hallucination validation via YAML schemas."""
-    
+
     def __init__(self, schema_dir: Optional[Path] = None):
         if schema_dir is None:
             # Default to relative path from this file
             schema_dir = Path(__file__).parent.parent / "schemas"
-            
+
         self.schema_dir = schema_dir
         self.schemas = {}
         self._load_schemas()

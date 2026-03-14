@@ -25,7 +25,7 @@ def fetch_training_data(symbol: str, days: int):
         if not data:
             logger.warning(f"No data found for {symbol}")
             return []
-        
+
         # Calculate indicators
         # Note: In a real scenario, we'd pre-calculate these for all data points
         # For now, we'll let the environment handle it or mock it

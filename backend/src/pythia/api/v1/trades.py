@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from pythia.infrastructure.persistence.database import get_db
 from pythia.infrastructure.persistence.models import User, Portfolio, Trade
 from pythia.core.auth import get_current_user
-from pythia.core.errors import TradingBotError, ResourceNotFoundError
+from pythia.core.errors import ResourceNotFoundError
 import structlog
-from typing import List
 logger = structlog.get_logger()
 router = APIRouter()
 

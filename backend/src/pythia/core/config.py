@@ -5,7 +5,7 @@ SOTA 2026 - Pydantic V2 Compatible
 Loads secrets from .env using pydantic-settings.
 """
 from typing import List, Optional, Union
-from pydantic import AnyHttpUrl, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):

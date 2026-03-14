@@ -8,7 +8,7 @@ of the previous entry, creating an immutable chain.
 import hashlib
 import json
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 class MerkleLogEntry:
 

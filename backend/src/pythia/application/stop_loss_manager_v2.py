@@ -3,7 +3,7 @@ Stop-Loss Manager - REFACTORED with Atomic Transaction Safety
 Implements: Full atomicity for position closure, proper rollback handling
 """
 import logging
-from typing import Dict, Optional, List
+from typing import Dict, List
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -27,7 +27,7 @@ def atomic_transaction(db: Session):
 class StopLossTakeProfitManager:
     """
     Manages stop-loss and take-profit orders with atomic execution.
-    
+
     SECURITY FIXES APPLIED:
     - Atomic position closure (trade record created BEFORE status update)
     - Proper rollback on failures
@@ -70,7 +70,7 @@ class StopLossTakeProfitManager:
     def _close_position(self, position: Position, reason: str):
         """
         Close position with full atomicity.
-        
+
         CRITICAL: Trade record is created BEFORE position status update
         to ensure no orphaned records on failure.
         """
@@ -102,7 +102,7 @@ class StopLossTakeProfitManager:
     def _update_trailing_stop(self, position: Position):
         """
         Update trailing stop price with support for long and short positions.
-        
+
         SECURITY FIX: Correctly handles short positions (inverse logic)
         """
         if not position.trailing_stop_pct:

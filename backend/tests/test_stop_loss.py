@@ -4,9 +4,7 @@ Tests for stop-loss and take-profit automation.
 Tests trigger conditions, position management, and automated order execution.
 """
 import pytest
-from decimal import Decimal
 from pythia.application.stop_loss_manager import StopLossTakeProfitManager as StopLossManager
-from pythia.core.errors import TradingError
 from pythia.infrastructure.persistence.models import Portfolio, Position, User
 
 class TestStopLossTakeProfit:

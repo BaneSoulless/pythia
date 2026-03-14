@@ -1,7 +1,6 @@
 import pytest
 import asyncio
-import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import Mock, MagicMock, patch, AsyncMock
 from pythia.application.backtest_engine import BacktestEngine
 from pythia.application.websocket_manager import ConnectionManager

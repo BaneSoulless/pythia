@@ -2,7 +2,6 @@
 Enhanced Trading Engine - REFACTORED with P0 Security Fixes
 Implements: Race condition protection, Decimal precision, strict validation
 """
-import logging
 from typing import Dict, Any, Optional
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -81,7 +80,7 @@ class EnhancedTradingEngine:
     def execute_trade(self, portfolio_id: int, symbol: str, side: str, quantity: float, price: float, stop_loss_pct: Optional[float]=None, take_profit_pct: Optional[float]=None) -> Dict[str, Any]:
         """
         Execute trade with atomic locking and Decimal precision.
-        
+
         SECURITY FIXES APPLIED:
         - Race condition protection via SELECT FOR UPDATE NOWAIT
         - Decimal precision for all financial calculations

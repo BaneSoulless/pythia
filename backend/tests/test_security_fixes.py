@@ -6,7 +6,6 @@ import pytest
 import asyncio
 from decimal import Decimal
 from unittest.mock import Mock, patch
-from sqlalchemy.orm import Session
 from pythia.core.validators import PriceValidator, QuantityValidator, SymbolValidator
 from pythia.core.errors import ValidationError
 

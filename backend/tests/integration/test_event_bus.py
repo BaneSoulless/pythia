@@ -3,7 +3,6 @@ Test Suite for Distributed Event Bus
 Applies Neuro-Symbolic workflow: verifies pub/sub functionality and error isolation.
 """
 import pytest
-import asyncio
 from unittest.mock import AsyncMock, patch
 from pythia.core.event_bus import RedisEventBus, EventBusError
 from pythia.domain.events.domain_events import TradeExecutedEvent
@@ -39,21 +38,21 @@ async def test_event_bus_publish_without_start(redis_mock):
 async def test_event_bus_safe_invoke():
     """Test Neuro-Symbolic logic: handler crash does not crash the bus."""
     bus = RedisEventBus()
-    
+
     # Mocking a crashing handler
     async def crashing_handler(data):
         raise ValueError("Simulated crash")
-        
+
     error_caught = False
     def on_err(data, exc):
         nonlocal error_caught
         error_caught = True
         assert isinstance(exc, ValueError)
-        
+
     bus.on_error(on_err)
-    
+
     # Manually trigger safe_invoke as if message arrived
     await bus._safe_invoke(crashing_handler, "TradeExecutedEvent", {"symbol":"BTC"})
-    
+
     # Ensures the error handler was called and no throw escaped _safe_invoke
     assert error_caught is True

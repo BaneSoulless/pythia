@@ -1,11 +1,11 @@
 import pytest
 pytest_plugins = ('pytest_asyncio',)
-from typing import Generator
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from pythia.infrastructure.persistence.database import Base, get_db
-from main import app
+from typing import Generator  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker, Session  # noqa: E402
+from pythia.infrastructure.persistence.database import Base, get_db  # noqa: E402
+from pythia.main import app  # noqa: E402
 SQLALCHEMY_DATABASE_URL = 'sqlite:///./test.db'
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={'check_same_thread': False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

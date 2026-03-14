@@ -1,7 +1,6 @@
 from datetime import datetime
 import pandas as pd
 import streamlit as st
-from pythia.adapters.alpaca_adapter import AlpacaAdapter
 
 st.set_page_config(page_title="Stocks Portfolio", page_icon="🏦", layout="wide")
 

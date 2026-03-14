@@ -35,7 +35,7 @@ class TestAIControlPlane(unittest.TestCase):
         )
         for _ in range(10):
             self.backtester.evaluate_signal(signal, prices)
-        
+
         self.assertTrue(self.backtester.detect_drift(threshold=0.5, window=10))
 
 if __name__ == "__main__":

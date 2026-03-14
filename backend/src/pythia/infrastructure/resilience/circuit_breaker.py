@@ -5,7 +5,6 @@ Previene failure a cascata su API AI e finanziarie.
 import logging
 from datetime import timedelta
 from functools import wraps
-from typing import Callable, Any
 try:
     from fastapi_cb import CircuitBreaker, CircuitBreakerError
 except ImportError:

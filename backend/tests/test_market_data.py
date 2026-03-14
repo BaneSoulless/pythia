@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timedelta
+from unittest.mock import patch
 import pandas as pd
 from pythia.application.market_data import MarketDataService
 

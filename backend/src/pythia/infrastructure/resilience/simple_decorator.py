@@ -12,7 +12,7 @@ def simple_circuit_breaker(max_retries: int=3, backoff_base: float=2.0):
             for attempt in range(max_retries):
                 try:
                     return await func(*args, **kwargs)
-                except Exception as e:
+                except Exception:
                     if attempt == max_retries - 1:
                         raise
                     wait = backoff_base ** attempt

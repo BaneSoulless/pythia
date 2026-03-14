@@ -27,10 +27,10 @@ class CacheService:
     def get(self, key: str) -> Optional[Any]:
         """
         Get value from cache.
-        
+
         Args:
             key: Cache key
-            
+
         Returns:
             Cached value or None if not found/expired
         """
@@ -47,12 +47,12 @@ class CacheService:
     def set(self, key: str, value: Any, ttl: int=60) -> bool:
         """
         Set value in cache with TTL.
-        
+
         Args:
             key: Cache key
             value: Value to cache
             ttl: Time to live in seconds
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -69,10 +69,10 @@ class CacheService:
     def delete(self, key: str) -> bool:
         """
         Delete key from cache.
-        
+
         Args:
             key: Cache key
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -88,10 +88,10 @@ class CacheService:
     def clear_pattern(self, pattern: str) -> int:
         """
         Clear all keys matching pattern.
-        
+
         Args:
             pattern: Key pattern (e.g., "market:*")
-            
+
         Returns:
             Number of keys deleted
         """
@@ -113,17 +113,17 @@ class CacheService:
         try:
             self.redis.ping()
             return True
-        except:
+        except Exception:
             return False
 
 def cached(ttl: int=60, key_prefix: str=''):
     """
     Decorator for caching function results.
-    
+
     Args:
         ttl: Time to live in seconds
         key_prefix: Prefix for cache key
-        
+
     Example:
         @cached(ttl=300, key_prefix="market")
         def get_market_data(symbol: str):

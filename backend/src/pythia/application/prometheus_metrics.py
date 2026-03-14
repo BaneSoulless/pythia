@@ -5,7 +5,6 @@ Exposes trading bot metrics for Prometheus scraping
 """
 from prometheus_client import Counter, Gauge, Histogram, Summary, generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Response
-import time
 trades_total = Counter('trading_bot_trades_total', 'Total number of trades executed', ['side', 'symbol'])
 trade_pnl = Histogram('trading_bot_trade_pnl', 'Profit/Loss per trade', buckets=[-100, -50, -10, -5, 0, 5, 10, 50, 100, 500])
 portfolio_value = Gauge('trading_bot_portfolio_value', 'Current portfolio total value', ['portfolio_id'])
@@ -26,11 +25,11 @@ min_balance_violations = Counter('trading_bot_min_balance_violations_total', 'At
 def metrics_endpoint() -> Response:
     """
     Endpoint to expose Prometheus metrics
-    
+
     Add to FastAPI:
     ```python
     from pythia.application.prometheus_metrics import metrics_endpoint
-    
+
     @app.get("/metrics")
     async def metrics():
         return metrics_endpoint()

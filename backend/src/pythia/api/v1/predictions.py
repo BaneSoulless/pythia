@@ -2,11 +2,10 @@
 Performance Prediction API Endpoints
 """
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pythia.infrastructure.persistence.database import get_db
 from pythia.application.ai.performance_prediction import get_performance_predictor
-from pythia.core.errors import TradingBotError
 router = APIRouter()
 logger = logging.getLogger(__name__)
 

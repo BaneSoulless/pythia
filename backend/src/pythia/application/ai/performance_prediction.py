@@ -9,7 +9,7 @@ Predicts future portfolio performance based on:
 """
 import logging
 import numpy as np
-from typing import Dict, List, Optional
+from typing import Dict
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from pythia.infrastructure.persistence.models import Trade, Portfolio
@@ -26,7 +26,7 @@ class PerformancePredictor:
     def predict_next_day_return(self, portfolio_id: int) -> Dict:
         """
         Predict next day's expected return
-        
+
         Returns:
             Dict with prediction, confidence, and range
         """

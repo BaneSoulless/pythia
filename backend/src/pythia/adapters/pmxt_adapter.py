@@ -11,7 +11,7 @@ Edge cases handled:
 # Step-1: Import abstractions and libraries
 import pmxt
 import logging
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional
 from pythia.core.ports import TradingPort, MarketDataPort
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class PmxtAdapterError(Exception):
 
 class PmxtAdapter(TradingPort, MarketDataPort):
     """Prediction Markets Adapter for Kalshi & Polymarket."""
-    
+
     def __init__(
         self,
         polymarket_wallet_key: Optional[str] = None,
@@ -58,7 +58,7 @@ class PmxtAdapter(TradingPort, MarketDataPort):
         return self.kalshi_client # default
 
     # --- MarketDataPort Implementation ---
-    
+
     async def fetch_markets(self, limit: int = 100, platform: str = "kalshi") -> List[Dict]:
         """Fetch available markets from standard prediction market platforms."""
         # Step-3: Pre-conditions
@@ -78,12 +78,12 @@ class PmxtAdapter(TradingPort, MarketDataPort):
         return {"symbol": symbol, "price": 0.50}
 
     # --- TradingPort Implementation ---
-    
+
     async def place_order(
-        self, 
-        symbol: str, 
-        side: str, 
-        quantity: float, 
+        self,
+        symbol: str,
+        side: str,
+        quantity: float,
         price: Optional[float] = None,
         platform: str = "kalshi"
     ) -> dict:
@@ -91,7 +91,7 @@ class PmxtAdapter(TradingPort, MarketDataPort):
         # Step-4: Validations
         assert quantity > 0, "Quantity must be positive"
         assert price is not None, "PMXT requires explicit limit pricing"
-        
+
         try:
             client = self._get_client(platform)
             order = client.place_order(

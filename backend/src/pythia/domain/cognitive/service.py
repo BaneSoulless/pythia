@@ -12,7 +12,7 @@ class CognitiveProcessor:
     """
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-    
+
     def process_market_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         # Placeholder for advanced reasoning
         return {'insights': ["Market seems stable"]}
@@ -30,19 +30,19 @@ class CognitiveService:
         """Start the service loop."""
         # Setup connection to bus if needed
         logger.info("Cognitive Service: ONLINE (Agents Loaded)")
-        
+
         while True:
             try:
                 # Simulation
-                market_snapshot = {"close": 50060, "volume": 160} 
+                market_snapshot = {"close": 50060, "volume": 160}
                 output = self.processor.process_market_data(market_snapshot)
-                
+
                 if output['insights']:
                     for insight in output['insights']:
                         # In SOTA, this might be published to an 'Insights' topic
                         # logger.info(f"🧠 COGNITION: {insight}")
                         pass
-                
+
                 await asyncio.sleep(5) # Thought cycle
             except Exception as e:
                 logger.error(f"Error in Cognitive loop: {e}")

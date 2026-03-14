@@ -1,11 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import datetime
 import structlog
 
 from pythia.infrastructure.persistence.database import get_db
-from pythia.core.errors import TradingBotError, ResourceNotFoundError
+from pythia.core.errors import TradingBotError
 from pythia.core.auth import get_current_user
 from pythia.infrastructure.persistence.models import User
 
@@ -26,7 +24,7 @@ async def start_backtest(
         # Placeholder for backtest logic
         # In a real implementation, this would trigger a background task
         logger.info("Starting backtest", symbol=symbol, user_id=current_user.id)
-        
+
         return {
             "message": "Backtest started",
             "backtest_id": "mock_id_123",

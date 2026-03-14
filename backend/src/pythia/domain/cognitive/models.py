@@ -7,7 +7,7 @@ class TradingSignal(BaseModel):
     pair: str
     stop_loss_pct: float = 0.02
     reason: str
-    
+
     @field_validator("action", mode="after")
     @classmethod
     def confidence_gate(cls, action, info):

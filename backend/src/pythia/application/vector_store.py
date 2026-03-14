@@ -3,7 +3,7 @@ Modulo per l'integrazione di Vector DB.
 Supporta ChromaDB per ambiente locale e Weaviate Cloud per la produzione.
 """
 import os
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import chromadb
 import weaviate
 from weaviate.classes.init import Auth

@@ -17,7 +17,7 @@ class AIModelEnsemble:
     def __init__(self, models: List[TradingRLAgent], voting_strategy: str='majority'):
         """
         Initialize ensemble
-        
+
         Args:
             models: List of trained AI models
             voting_strategy: 'majority', 'unanimous', 'weighted'
@@ -29,7 +29,7 @@ class AIModelEnsemble:
     def predict(self, state: np.ndarray, training: bool=False) -> Tuple[int, float]:
         """
         Get ensemble prediction
-        
+
         Returns:
             (action, confidence)
         """
@@ -89,7 +89,7 @@ class AIModelEnsemble:
     def update_weights(self, trade_results: List[float]):
         """
         Update model weights based on performance
-        
+
         Args:
             trade_results: List of P&L results for each model's predictions
         """
@@ -117,7 +117,7 @@ class MultiAPIManager:
     def __init__(self, apis: List[Dict]):
         """
         Initialize with list of API configurations
-        
+
         Args:
             apis: List of dicts with 'name', 'client', 'priority'
         """

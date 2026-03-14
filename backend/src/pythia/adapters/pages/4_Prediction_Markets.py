@@ -3,8 +3,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
+from datetime import datetime
 
 st.set_page_config(
     page_title="Prediction Markets",
@@ -210,14 +209,14 @@ col1, col2, col3 = st.columns(3)
 
 markets_scanned = fetch_prometheus_metric("pythia_markets_scanned_total")
 kalshi_scanned = sum(
-    float(r["value"]) 
-    for r in markets_scanned 
+    float(r["value"])
+    for r in markets_scanned
     if r["metric"].get("platform") == "kalshi"
 ) if markets_scanned else 0
 
 poly_scanned = sum(
-    float(r["value"]) 
-    for r in markets_scanned 
+    float(r["value"])
+    for r in markets_scanned
     if r["metric"].get("platform") == "polymarket"
 ) if markets_scanned else 0
 

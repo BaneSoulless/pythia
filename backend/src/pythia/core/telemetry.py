@@ -10,7 +10,6 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from fastapi import FastAPI
-from sqlalchemy import engine
 import logging
 logger = logging.getLogger(__name__)
 

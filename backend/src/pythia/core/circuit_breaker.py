@@ -14,7 +14,7 @@ States:
 import time
 import functools
 import logging
-from typing import Callable, Any, Optional
+from typing import Callable, Any
 logger = logging.getLogger(__name__)
 
 class CircuitBreakerOpenError(Exception):

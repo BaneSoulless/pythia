@@ -1,6 +1,6 @@
 """
 Purpose: SOTA-2026 Distributed Event Bus using Redis PubSub.
-Main constraints: Must replace in-memory asyncio.Queue to allow MultiAssetOrchestrator 
+Main constraints: Must replace in-memory asyncio.Queue to allow MultiAssetOrchestrator
 (FastAPI) and Celery workers to share & react to Domain Events.
 Dependencies: redis.asyncio, pydantic (for event serialization).
 
@@ -34,11 +34,11 @@ class RedisEventBus:
     Usage:
         bus = RedisEventBus("redis://localhost:6379/3")
         await bus.start()
-        
+
         @bus.subscribe("TradeExecutedEvent")
         async def on_trade(event_dict):
             print(event_dict)
-            
+
         await bus.publish(TradeExecutedEvent(symbol="BTC"))
     """
 
@@ -46,11 +46,11 @@ class RedisEventBus:
         # Step-2: Initialize with Pre-conditions
         self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/3")
         assert self.redis_url.startswith("redis"), "Invalid Redis URL scheme"
-        
+
         self.channel_name = "pythia_domain_events"
         self._handlers: Dict[str, List[EventHandler]] = {}
         self._error_handlers: List[Callable[[dict, Exception], Any]] = []
-        
+
         self.redis: Optional[redis.Redis] = None
         self.pubsub: Optional[redis.client.PubSub] = None
         self._running: bool = False
@@ -81,7 +81,7 @@ class RedisEventBus:
             self.pubsub = self.redis.pubsub()
             await self.pubsub.subscribe(self.channel_name)
             self._running = True
-            
+
             self._listener_task = asyncio.create_task(self._listen())
             logger.info(f"✅ RedisEventBus connected to {self.redis_url}")
         except Exception as e:
@@ -103,19 +103,19 @@ class RedisEventBus:
         """Serialize a DomainEvent dataclass and publish it to Redis."""
         # Step-4: Payload extraction and serialization
         assert hasattr(event_obj, "__dataclass_fields__"), "Event must be a dataclass"
-        
+
         payload = {
             "__type__": event_obj.__class__.__name__,
             "data": {
-                k: getattr(event_obj, k).isoformat() if isinstance(getattr(event_obj, k), datetime) else getattr(event_obj, k) 
+                k: getattr(event_obj, k).isoformat() if isinstance(getattr(event_obj, k), datetime) else getattr(event_obj, k)
                 for k in event_obj.__dataclass_fields__
             }
         }
-        
+
         json_str = json.dumps(payload)
         if not self.redis:
             raise EventBusError("Redis connection is not initialized. Call start() first.")
-        
+
         try:
             receivers = await self.redis.publish(self.channel_name, json_str)
             logger.debug(f"Published {payload['__type__']} to {receivers} receivers")
@@ -133,7 +133,7 @@ class RedisEventBus:
                     payload = json.loads(message['data'])
                     event_type = payload.get("__type__")
                     event_data = payload.get("data", {})
-                    
+
                     if not event_type:
                         continue
 
@@ -141,7 +141,7 @@ class RedisEventBus:
                     handlers = self._handlers.get(event_type, [])
                     for h in handlers:
                         asyncio.create_task(self._safe_invoke(h, event_type, event_data))
-                        
+
             except asyncio.CancelledError:
                 break
             except Exception as e:

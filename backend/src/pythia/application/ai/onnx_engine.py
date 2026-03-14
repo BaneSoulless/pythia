@@ -7,7 +7,6 @@ Provides low-latency inference for quantized neural networks.
 import onnxruntime as ort
 import numpy as np
 import logging
-from typing import Dict, Any, List
 logger = logging.getLogger(__name__)
 
 class ONNXModelEngine:
@@ -38,10 +37,10 @@ class ONNXModelEngine:
     def predict(self, input_data: np.ndarray) -> np.ndarray:
         """
         Run inference.
-        
+
         Args:
             input_data: Numpy array of input features (batch_size, features)
-            
+
         Returns:
             Numpy array of predictions
         """

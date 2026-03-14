@@ -6,8 +6,7 @@ Validates request deduplication and conflict detection.
 import pytest
 import time
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
-from pythia.infrastructure.idempotency.memory_store import IdempotencyStore, CachedResponse, get_idempotency_store, idempotent, IdempotencyKeyError, IdempotencyConflictError, generate_request_fingerprint
+from pythia.infrastructure.idempotency.memory_store import IdempotencyStore, CachedResponse, idempotent, IdempotencyKeyError, IdempotencyConflictError, generate_request_fingerprint
 
 class TestCachedResponse:
     """Test cached response behavior."""

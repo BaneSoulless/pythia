@@ -1,7 +1,6 @@
 from datetime import datetime
 import pandas as pd
 import streamlit as st
-import asyncio
 from pythia.adapters.ccxt_adapter import CCXTForexAdapter
 
 st.set_page_config(page_title="Forex Markets", page_icon="💱", layout="wide")

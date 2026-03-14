@@ -4,9 +4,8 @@ Stop-Loss and Take-Profit Manager
 P0-3 FIX: Atomic transaction handling with row-level locking.
 """
 import logging
-from typing import Dict, Optional, List
+from typing import Dict, List
 from datetime import datetime
-from decimal import Decimal
 from contextlib import contextmanager
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 def atomic_transaction(db: Session):
     """
     Context manager for atomic database transactions.
-    
+
     Automatically commits on success, rolls back on error.
     """
     try:
@@ -31,7 +30,7 @@ def atomic_transaction(db: Session):
 class StopLossTakeProfitManager:
     """
     Manages stop-loss and take-profit orders.
-    
+
     P0-3 FIX: All position closes are now atomic with row-level locking.
     """
 
@@ -67,7 +66,7 @@ class StopLossTakeProfitManager:
     def _close_position(self, position: Position, reason: str):
         """
         Close position with full atomicity.
-        
+
         P0-3 FIX: Uses row-level locking and creates Trade record.
         """
         try:

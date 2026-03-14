@@ -12,7 +12,7 @@ from structlog.stdlib import LoggerFactory
 def setup_structured_logging(log_level: str='INFO', log_file: str='trading_bot.log'):
     """
     Configure structured logging with JSON output.
-    
+
     Args:
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_file: Path to log file
@@ -30,13 +30,13 @@ def setup_structured_logging(log_level: str='INFO', log_file: str='trading_bot.l
 def get_logger(name: str=None):
     """
     Get a structured logger instance.
-    
+
     Args:
         name: Logger name (usually __name__)
-        
+
     Returns:
         Structured logger instance
-        
+
     Example:
         logger = get_logger(__name__)
         logger.info("trade_executed", symbol="AAPL", quantity=10, price=150.0)

@@ -13,7 +13,7 @@ Edge cases handled:
 import logging
 import datetime
 import pytz
-from typing import List, Dict, Any, Optional
+from typing import Optional
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
@@ -29,7 +29,7 @@ class AlpacaAdapterError(Exception):
 
 class AlpacaAdapter(TradingPort, MarketDataPort):
     """Adapter for US Stocks trading via Alpaca API."""
-    
+
     def __init__(self, api_key: str, secret_key: str, paper: bool = True):
         # Step-2: Initialize with assertions
         assert api_key, "Alpaca API key cannot be empty"
@@ -44,10 +44,10 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
         now = datetime.datetime.now(self.timezone)
         if now.weekday() >= 5:
             return False
-            
+
         opening_time = now.replace(hour=9, minute=30, second=0, microsecond=0)
         closing_time = now.replace(hour=16, minute=0, second=0, microsecond=0)
-        
+
         return opening_time <= now <= closing_time
 
     async def get_account_status(self) -> dict:
@@ -71,17 +71,17 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
         """Verify Pattern Day Trader (PDT) compliance."""
         equity = account_status["equity"]
         day_trades = account_status["daytrade_count"]
-        
+
         if equity < 25000 and day_trades >= 3:
             logger.warning(f"PDT Risk: Equity ${equity}, Day Trades {day_trades}")
             return False
         return True
 
     async def place_order(
-        self, 
-        symbol: str, 
-        side: str, 
-        quantity: float, 
+        self,
+        symbol: str,
+        side: str,
+        quantity: float,
         price: Optional[float] = None
     ) -> dict:
         """Execute a buy/sell order with PDT and Market Hours guards."""
@@ -116,7 +116,7 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
                     limit_price=price,
                     time_in_force=TimeInForce.DAY
                 )
-            
+
             # Step-7: Execution and persistence
             order = self.client.submit_order(request)
             logger.info(f"Alpaca order {side} placed for {symbol}: {order.id}")
@@ -133,7 +133,7 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
             return [dict(p) for p in positions]
         except Exception as e:
             raise AlpacaAdapterError(f"Failed to fetch positions: {e}")
-            
+
     async def fetch_ticker(self, symbol: str) -> dict:
         """Fetch current market data for a symbol (Placeholder for interface completeness)."""
         assert symbol, "Symbol required."

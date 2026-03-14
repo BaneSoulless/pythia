@@ -1,7 +1,7 @@
 """
 Error Analysis and Learning System
 """
-from typing import List, Dict, Optional
+from typing import List, Dict
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from pythia.infrastructure.persistence.models import Trade, LearningExperience

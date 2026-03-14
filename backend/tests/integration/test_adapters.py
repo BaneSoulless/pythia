@@ -3,9 +3,9 @@ Test Suite for Adapters (Alpaca, PMXT)
 Applies Neuro-Symbolic workflow: translate constraints to automated assertions.
 """
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from pythia.adapters.alpaca_adapter import AlpacaAdapter, AlpacaAdapterError
-from pythia.adapters.pmxt_adapter import PmxtAdapter, PmxtAdapterError
+from pythia.adapters.pmxt_adapter import PmxtAdapter
 
 @pytest.fixture
 def alpaca_mock():
@@ -24,7 +24,7 @@ async def test_alpaca_pdt_compliance_rule():
     # Rule: Equity < 25000 and daytrades >= 3 triggers violation
     status = {"equity": 24000.0, "daytrade_count": 3}
     assert adapter._check_pdt_compliance(status) is False
-    
+
     # Safe
     status_safe = {"equity": 26000.0, "daytrade_count": 3}
     assert adapter._check_pdt_compliance(status_safe) is True
@@ -34,14 +34,14 @@ async def test_alpaca_place_order_market_closed(alpaca_mock):
     """Test Edge Case: Market Closed Rejection."""
     adapter = AlpacaAdapter("test", "test")
     adapter.is_market_open = AsyncMock(return_value=False)
-    
+
     with pytest.raises(AlpacaAdapterError, match="US Markets closed"):
         await adapter.place_order("AAPL", "BUY", 1.0)
 
 @pytest.mark.asyncio
 async def test_pmxt_initialization():
     """Test PmxtAdapter conditionally activates clients."""
-    with patch("pythia.adapters.pmxt_adapter.pmxt.Polymarket") as PolyMock:
+    with patch("pythia.adapters.pmxt_adapter.pmxt.Polymarket") as _:
         adapter = PmxtAdapter(polymarket_wallet_key="pkey")
         assert adapter.poly_client is not None
         assert adapter.kalshi_client is None

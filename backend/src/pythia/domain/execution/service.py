@@ -7,7 +7,6 @@ Simulates execution against real-time data when API keys are missing.
 
 import asyncio
 import logging
-import json
 import time
 from typing import Dict, Any
 from pythia.infrastructure.messaging.system_bus import SystemBus
@@ -40,7 +39,7 @@ class PaperTradingConnector:
                 raise Exception("Insufficient Paper Funds")
             self.balance -= total_cost
             self.positions[symbol] = self.positions.get(symbol, 0) + amount
-            
+
         elif side == 'sell':
             current_pos = self.positions.get(symbol, 0)
             if amount > current_pos:
@@ -74,31 +73,31 @@ class ExecutionService:
         side = order.get('action')
         amount = order.get('quantity')
         price = order.get('price')
-        
+
         # Neuro-Symbolic Validation
         if not neuro_validator.validate(order, confidence=0.9):
             logger.warning(f"Paper Execution BLOCKED by NeuroSymbolic Validator: {order}")
             return
 
         logger.info(f"EXECUTING PAPER TRADE: {side.upper()} {amount} {symbol} @ {price}")
-        
+
         try:
             response = await self.connector.create_order(
                 symbol=symbol, type='limit', side=side, amount=amount, price=price
             )
             logger.info(f"PAPER ORDER FILLED: {response}")
-            
+
             # Log new balance
             bal = await self.connector.fetch_balance()
             logger.info(f"New Paper Balance: {bal['total']['USDT']:.2f} USDT")
-            
+
         except Exception as e:
             logger.error(f"Paper Execution Failed: {e}")
 
     async def start(self):
         self.bus.connect_execution_subscriber()
         logger.info("Execution Service: PAPER TRADING ONLINE (Virtual Portfolio)")
-        
+
         while True:
             try:
                 msg = await self.bus.receive_execution_command()

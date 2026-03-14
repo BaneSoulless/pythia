@@ -12,11 +12,10 @@ Schema:
 - data: JSON payload
 - created_at: Timestamp (UTC)
 """
-from sqlalchemy import Column, String, Integer, DateTime, Text, JSON
+from sqlalchemy import Column, String, Integer, DateTime, JSON
 from sqlalchemy.sql import func
 from typing import List, Dict, Any, Optional
-import datetime
-from pythia.infrastructure.persistence.database import Base, get_db
+from pythia.infrastructure.persistence.database import Base
 
 class EventLog(Base):
     """

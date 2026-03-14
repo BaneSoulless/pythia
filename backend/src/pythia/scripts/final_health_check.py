@@ -1,10 +1,6 @@
 import os
-import sys
 import subprocess
-import requests
-import json
 from pathlib import Path
-import time
 
 # Set PYTHONPATH to include the source directory
 os.environ["PYTHONPATH"] = str(Path("backend/src").absolute())
@@ -22,7 +18,7 @@ def check_file_structure():
         "k8s/pythia-deployment.yaml",
         "docs/adr/0001-prediction-markets-integration.md"
     ]
-    
+
     missing = []
     for f in critical_files:
         path = Path(f)
@@ -51,21 +47,21 @@ def check_logic():
     try:
         from pythia.domain.markets.prediction_market import PredictionMarket
         from pythia.infrastructure.secrets.secrets_manager import SecretsManager
-        
+
         # Test 1: Arbitrage Logic
         m1 = PredictionMarket("K1", "Test", 0.45, 0.55, "kalshi", 100)
         m2 = PredictionMarket("P1", "Test", 0.55, 0.44, "polymarket", 100)
         arb = m1.arbitrage_opportunity(m2)
         assert arb is not None and arb["profit"] > 0
         print("  ✅ Domain: Arbitrage detection logic works")
-        
+
         # Test 2: Secrets Encryption
         mgr = SecretsManager(encryption_key_path=Path(".encryption_key_health"))
         token = mgr.encrypt_secret("pythia_test")
         assert mgr.decrypt_secret(token) == "pythia_test"
         Path(".encryption_key_health").unlink()
         print("  ✅ Infrastructure: Secrets encryption works")
-        
+
         return True
     except Exception as e:
         print(f"  ❌ Logic check failed: {e}")
@@ -75,11 +71,11 @@ def run_health_check():
     print("=" * 60)
     print("🚀 PYTHIA MULTI-ASSET READINESS REPORT")
     print("=" * 60)
-    
+
     s1 = check_file_structure()
-    s2 = check_git_status()
+    _s2 = check_git_status()
     s3 = check_logic()
-    
+
     print("\n" + "=" * 60)
     if s1 and s3:
         print("🟢 SYSTEM READY FOR LIVE DEPLOYMENT")

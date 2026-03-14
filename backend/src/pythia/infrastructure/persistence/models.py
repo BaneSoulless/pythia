@@ -9,9 +9,8 @@ Edge cases handled:
 """
 # Step-1: Import Abstractions
 from datetime import datetime
-from sqlalchemy import Column, String, Float, DateTime, Boolean, Enum as SQLEnum, Integer
+from sqlalchemy import Column, String, Float, DateTime, Enum as SQLEnum, Integer
 from sqlalchemy.orm import DeclarativeBase
-from typing import Optional
 
 from pythia.core.ports import AssetClass
 
@@ -32,7 +31,7 @@ class TradeRecord(Base):
     platform = Column(String(30), nullable=False) # alpaca, kalshi, etc.
     asset_class = Column(SQLEnum(AssetClass), nullable=False)
     executed_at = Column(DateTime, default=datetime.utcnow, index=True)
-    
+
     # Step-3: Pre/Post assertions logic on creation
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

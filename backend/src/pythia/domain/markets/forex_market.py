@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 @dataclass
 class ForexMarket:
@@ -9,7 +8,7 @@ class ForexMarket:
     quote_currency: str
     pip_value: float = 0.0001
     contract_size: float = 100000  # Standard Lot
-    
+
     def calculate_pip_gain(self, entry_price: float, exit_price: float) -> float:
         """Calculate the number of pips gained/lost."""
         diff = exit_price - entry_price

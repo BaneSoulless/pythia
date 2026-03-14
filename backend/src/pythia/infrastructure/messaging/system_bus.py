@@ -25,14 +25,14 @@ class ConnectionState:
 class SystemBus:
     """
     Enhanced ZMQ message bus with reconnection and health monitoring.
-    
+
     Features:
     - Exponential backoff reconnection
     - Connection health tracking
     - Graceful shutdown
     - High-water mark configuration
     """
-    
+
     def __init__(self, config=None):
         self.context = zmq.asyncio.Context()
         self.config = config or {}
@@ -41,11 +41,11 @@ class SystemBus:
             'strategy': 5556,
             'data': 5557
         })
-        
+
         self.execution_socket = None
         self.strategy_socket = None
         self.data_socket = None
-        
+
         # Connection health tracking
         self._states: Dict[str, str] = {}
         self._last_activity: Dict[str, float] = {}
@@ -64,17 +64,17 @@ class SystemBus:
     async def _reconnect_socket(self, endpoint: str, setup_func) -> bool:
         """Attempt to reconnect a socket with exponential backoff."""
         attempts = self._reconnect_attempts.get(endpoint, 0)
-        
+
         if attempts >= self._max_reconnect_attempts:
             logger.error(f"Max reconnection attempts reached for {endpoint}")
             return False
-        
+
         self._states[endpoint] = ConnectionState.RECONNECTING
         delay = self._get_reconnect_delay(endpoint)
-        
+
         logger.info(f"Reconnecting {endpoint} in {delay:.1f}s (attempt {attempts + 1})")
         await asyncio.sleep(delay)
-        
+
         try:
             setup_func()
             self._states[endpoint] = ConnectionState.CONNECTED
@@ -95,11 +95,11 @@ class SystemBus:
             # Frontend: Receives from Strategy (Publishers)
             self.frontend = self.context.socket(zmq.XSUB)
             self.frontend.bind(f"tcp://*:{self.ports['strategy']}")
-            
+
             # Backend: Sends to Execution (Subscribers)
             self.backend = self.context.socket(zmq.XPUB)
             self.backend.bind(f"tcp://*:{self.ports['execution']}")
-            
+
             logger.info(f"Bus Proxy Active: Strategy({self.ports['strategy']}) -> Execution({self.ports['execution']})")
             return self.frontend, self.backend
         except zmq.ZMQError as e:
@@ -210,7 +210,7 @@ class SystemBus:
         """Background health check loop."""
         while not self._shutdown_requested:
             await asyncio.sleep(self._health_check_interval)
-            
+
             for endpoint, state in self._states.items():
                 if state == ConnectionState.DISCONNECTED:
                     setup_funcs = {
@@ -225,14 +225,14 @@ class SystemBus:
         """Graceful shutdown of all sockets."""
         self._shutdown_requested = True
         logger.info("SystemBus shutdown initiated")
-        
+
         for socket in [self.execution_socket, self.strategy_socket, self.data_socket]:
             if socket:
                 try:
                     socket.close(linger=0)
                 except Exception as e:
                     logger.error(f"Error closing socket: {e}")
-        
+
         self.context.term()
         logger.info("SystemBus shutdown complete")
 
@@ -244,33 +244,33 @@ async def bus_listener(bus: SystemBus):
     """
     try:
         frontend, backend = bus.setup_proxy()
-        
+
         # ZMQ Proxy is blocking, so we run it in a thread or use specific async handling
         # For asyncio, we can manually forward or use device
         # Simpler manual forwarding for control:
-        
+
         logger.info("Bus Proxy Listener Started (Forwarding Mode)")
-        
+
         while not bus._shutdown_requested:
             # Poll both sockets
             events = await bus.context.poll({
-                frontend: zmq.POLLIN, 
+                frontend: zmq.POLLIN,
                 backend: zmq.POLLIN
             }, timeout=100)
-            
+
             for socket, event in events:
                 if socket == frontend:
                     # Msg from Strategy -> Forward to Execution
                     msg = await frontend.recv_multipart()
                     await backend.send_multipart(msg)
-                
+
                 if socket == backend:
                     # Subscription messages from Execution -> Forward to Strategy (if using XPUB)
                     msg = await backend.recv_multipart()
                     await frontend.send_multipart(msg)
-                    
+
             await asyncio.sleep(0.001) # Yield
-            
+
     except Exception as e:
         logger.error(f"Bus Proxy Error: {e}")
     finally:

@@ -1,4 +1,3 @@
-import pytest
 from pythia.core.auth import get_password_hash, verify_password, create_access_token
 
 def test_register_user(client):

@@ -2,7 +2,6 @@
 Client per l'API Groq con rate limiting (30 RPM, max 1 richiesta ogni 2.1 secondi).
 """
 import asyncio
-import json
 import logging
 import os
 import time
@@ -31,17 +30,17 @@ class GroqRateLimiter:
 
 class GroqClient:
     """Client per Groq API che emette segnali compatibili con Pydantic TradingSignal."""
-    
+
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("GROQ_API_KEY")
         self.client = AsyncGroq(api_key=self.api_key) if self.api_key else None
         self.rate_limiter = GroqRateLimiter()
-        
+
     async def get_signal(self, pair: str, price: float, rsi: float, ema_fast: float, ema_slow: float) -> TradingSignal:
         if not self.client:
             logger.warning("GROQ_API_KEY non configurata. Ritorno segnale HOLD di fallback.")
             return TradingSignal(action="HOLD", confidence=0.0, pair=pair, reason="NO_API_KEY")
-            
+
         prompt = (
             f"Analyze {pair} market. Recent price: {price}, RSI: {rsi}, "
             f"EMA signals: (fast: {ema_fast}, slow: {ema_slow}). "
@@ -50,10 +49,10 @@ class GroqClient:
         return await self._execute_groq_request(prompt, pair)
 
     async def get_stock_signal(
-        self, 
-        symbol: str, 
-        price: float, 
-        earnings_sentiment: str, 
+        self,
+        symbol: str,
+        price: float,
+        earnings_sentiment: str,
         news_summary: str,
         rsi: float = 50.0,
         macd_signal: str = "neutral"
@@ -76,11 +75,11 @@ class GroqClient:
         """Internal executor for Groq requests with retries and rate limiting."""
         max_retries = 3
         retry_delay = 2.0
-        
+
         for attempt in range(max_retries):
             try:
                 await self.rate_limiter.wait()
-                
+
                 chat_completion = await self.client.chat.completions.create(
                     messages=[
                         {"role": "system", "content": "You are an AI trading expert. You only output valid JSON representing a TradingSignal."},
@@ -90,10 +89,10 @@ class GroqClient:
                     response_format={"type": "json_object"},
                     temperature=0.1
                 )
-                
+
                 content = chat_completion.choices[0].message.content
                 return TradingSignal.model_validate_json(content)
-                
+
             except Exception as e:
                 logger.warning(f"Tentativo {attempt + 1}/{max_retries} fallito per {identifier}: {e}")
                 if attempt < max_retries - 1:

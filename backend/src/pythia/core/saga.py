@@ -6,7 +6,7 @@ Manages distributed transactions with compensation logic (Rollback).
 """
 import logging
 import uuid
-from typing import Callable, Any, List, Dict
+from typing import Callable, Any, List
 from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 

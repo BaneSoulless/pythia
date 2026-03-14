@@ -5,8 +5,7 @@ Validates state transitions, failure counting, and recovery behavior.
 """
 import pytest
 import time
-from unittest.mock import Mock, patch
-from pythia.infrastructure.resilience.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitBreakerOpenError, CircuitState, CircuitBreakerRegistry, circuit_breaker
+from pythia.infrastructure.resilience.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitBreakerOpenError, CircuitState, CircuitBreakerRegistry
 
 class TestCircuitBreakerStates:
     """Test circuit breaker state transitions."""

@@ -18,12 +18,12 @@ end
 
 class IdempotencyStore:
     """Implementa uno store di idempotenza usando script Lua in Redis."""
-    
+
     def __init__(self, redis_url: str = "redis://localhost:6379/1"):
         self.redis_client = redis.from_url(redis_url)
         self.ttl_seconds = 86400  # 24 hours default
         self._set_if_not_exists = self.redis_client.register_script(LUA_IDEMPOTENCY_SCRIPT)
-        
+
     async def check_and_set(self, idempotency_key: str, payload: dict) -> bool:
         """
         Controlla la chiave. Se nuova, la salva col payload e ritorna True.
@@ -31,10 +31,10 @@ class IdempotencyStore:
         """
         if not idempotency_key:
             return False
-            
+
         key = f"idem:{idempotency_key}"
         data = json.dumps(payload)
-        
+
         result = await self._set_if_not_exists(keys=[key], args=[data, self.ttl_seconds])
         return bool(result)
 
@@ -52,14 +52,14 @@ async def idempotency_middleware(request: Request, call_next):
         idem_key = request.headers.get("X-Idempotency-Key")
         if not idem_key:
             raise HTTPException(status_code=400, detail="X-Idempotency-Key header is required")
-            
+
         store = IdempotencyStore()
         body = await request.body()
         payload = {"body_hash": hashlib.sha256(body).hexdigest()}
-        
+
         is_new = await store.check_and_set(idem_key, payload)
         if not is_new:
             raise HTTPException(status_code=409, detail="Idempotent request previously completed")
-            
+
     response = await call_next(request)
     return response

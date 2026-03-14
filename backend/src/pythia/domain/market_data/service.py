@@ -10,7 +10,7 @@ import ccxt.pro as ccxt
 import asyncio
 import logging
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any
 from pythia.infrastructure.messaging.system_bus import SystemBus
 from pythia.core.config import settings
 
@@ -36,12 +36,12 @@ class MarketDataService:
             self.exchange = exchange_class({
                 'enableRateLimit': True,
                 'options': {
-                    'defaultType': 'future', 
+                    'defaultType': 'future',
                 }
             })
             if settings.EXCHANGE_TESTNET:
                 self.exchange.set_sandbox_mode(True)
-                
+
             logger.info(f"MarketData: Connected to {self.exchange_id} (Public Streams)")
         except Exception as e:
             logger.critical(f"MarketData: Exchange Setup Failed: {e}")
@@ -52,7 +52,7 @@ class MarketDataService:
         while self._running:
             try:
                 ticker = await self.exchange.watch_ticker(symbol)
-                
+
                 # Normalize Data
                 payload = {
                     "type": "ticker",
@@ -63,11 +63,11 @@ class MarketDataService:
                     "volume": ticker['baseVolume'],
                     "timestamp": ticker['timestamp']
                 }
-                
+
                 # Publish to Bus
                 if self.bus.data_socket:
                      await self.bus.data_socket.send_string(json.dumps(payload))
-                
+
             except ccxt.NetworkError as e:
                 logger.warning(f"MarketData: Network Error ({symbol}): {e}")
                 await asyncio.sleep(5)
@@ -78,11 +78,11 @@ class MarketDataService:
     async def start(self):
         """Start the service loop."""
         await self._setup_exchange()
-        self.bus.setup_data_endpoint() 
+        self.bus.setup_data_endpoint()
         self._running = True
-        
+
         logger.info("MarketData Service: PUBLIC STREAMING STARTED")
-        
+
         try:
             tasks = [self._stream_ticker(s) for s in self.symbols]
             await asyncio.gather(*tasks)
@@ -94,23 +94,22 @@ class MarketDataService:
                 await self.exchange.close()
             logger.info("MarketData Service: Shutdown")
 
-import time
-import random
-import json
+import time  # noqa: E402
+import random  # noqa: E402
 
 def run_service(config):
     print("    [DATA] Market Data Layer Initialized.")
     # Synthetic Ticker fallback if real connection fails (Simulated)
     print("    [DATA] Entering Synthetic Ticker Mode (Reliability Fallback)")
-    
+
     price = 45000.0
-    
+
     while True:
         try:
             # Simulate price movement
             change = random.uniform(-0.005, 0.005)
             price = price * (1 + change)
-            
+
             payload = {
                 "type": "TICKER",
                 "symbol": "BTC/USD",
@@ -119,7 +118,7 @@ def run_service(config):
             }
             # Print to stdout, which the Interface Bridge captures and sends to WS
             print(json.dumps(payload), flush=True)
-            
+
             time.sleep(0.5)
         except Exception as e:
             print(f"    [DATA] Error: {e}")

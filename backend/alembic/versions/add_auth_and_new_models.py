@@ -18,7 +18,7 @@ depends_on = None
 
 def upgrade() -> None:
     """Upgrade database schema"""
-    
+
     # Create users table
     op.create_table(
         'users',
@@ -34,10 +34,10 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
-    
+
     # Create portfolios table (or alter if exists)
     portfolios_exists = op.get_bind().dialect.has_table(op.get_bind(), 'portfolios')
-    
+
     if not portfolios_exists:
         op.create_table(
             'portfolios',
@@ -55,10 +55,10 @@ def upgrade() -> None:
         # Add user_id column to existing portfolios table
         op.add_column('portfolios', sa.Column('user_id', sa.Integer(), nullable=True))
         op.create_foreign_key(None, 'portfolios', 'users', ['user_id'], ['id'])
-    
+
     # Create or alter positions table
     positions_exists = op.get_bind().dialect.has_table(op.get_bind(), 'positions')
-    
+
     if not positions_exists:
         op.create_table(
             'positions',
@@ -84,10 +84,10 @@ def upgrade() -> None:
         op.add_column('positions', sa.Column('stop_loss_price', sa.Float(), nullable=True))
         op.add_column('positions', sa.Column('take_profit_price', sa.Float(), nullable=True))
         op.add_column('positions', sa.Column('entry_price', sa.Float(), nullable=True))
-    
+
     # Create or check trades table
     trades_exists = op.get_bind().dialect.has_table(op.get_bind(), 'trades')
-    
+
     if not trades_exists:
         op.create_table(
             'trades',
@@ -108,7 +108,7 @@ def upgrade() -> None:
         )
         op.create_index(op.f('ix_trades_id'), 'trades', ['id'], unique=False)
         op.create_index(op.f('ix_trades_symbol'), 'trades', ['symbol'], unique=False)
-    
+
     # Create alerts table
     op.create_table(
         'alerts',
@@ -122,7 +122,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_alerts_id'), 'alerts', ['id'], unique=False)
-    
+
     # Create backtest_results table
     op.create_table(
         'backtest_results',
@@ -153,23 +153,23 @@ def downgrade() -> None:
     """Downgrade database schema"""
     op.drop_index(op.f('ix_backtest_results_id'), table_name='backtest_results')
     op.drop_table('backtest_results')
-    
+
     op.drop_index(op.f('ix_alerts_id'), table_name='alerts')
     op.drop_table('alerts')
-    
+
     # Only drop if we created, otherwise just remove columns
     try:
         op.drop_column('positions', 'entry_price')
         op.drop_column('positions', 'take_profit_price')
         op.drop_column('positions', 'stop_loss_price')
-    except:
+    except Exception:
         pass
-    
+
     try:
         op.drop_column('portfolios', 'user_id')
-    except:
+    except Exception:
         pass
-    
+
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_id'), table_name='users')

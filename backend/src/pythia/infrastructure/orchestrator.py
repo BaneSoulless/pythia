@@ -25,7 +25,6 @@ from pythia.api.v1.market_data import router as market_data_router
 from pythia.api.v1.portfolio import router as portfolio_router
 from pythia.api.v1.trades import router as trades_router
 from pythia.infrastructure.monitoring.prometheus_exporter import get_metrics_exporter
-from pythia.application.stop_loss_manager_v2 import StopLossTakeProfitManager
 from pythia.infrastructure.secrets.secrets_manager import SecretsManager
 
 logging.basicConfig(

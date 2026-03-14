@@ -1,6 +1,5 @@
 import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock
 from fastapi import WebSocket
 from pythia.application.websocket_manager import ConnectionManager
 

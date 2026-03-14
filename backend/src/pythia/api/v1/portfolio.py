@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 from pythia.infrastructure.persistence.database import get_db
 from pythia.infrastructure.persistence.models import Portfolio, Position, User
 from pythia.core.auth import get_current_user
-from pythia.core.errors import ResourceNotFoundError, TradingBotError, ErrorCode
+from pythia.core.errors import ResourceNotFoundError
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ def get_portfolio(
         db.add(portfolio)
         db.commit()
         db.refresh(portfolio)
-    
+
     return {
         "id": portfolio.id,
         "balance": portfolio.balance,
@@ -41,12 +41,12 @@ def get_portfolio_positions(
     portfolio = db.query(Portfolio).filter(Portfolio.user_id == current_user.id).first()
     if not portfolio:
         raise ResourceNotFoundError("Portfolio")
-        
+
     positions = db.query(Position).filter(
         Position.portfolio_id == portfolio.id,
         Position.status == "OPEN"
     ).offset(skip).limit(limit).all()
-    
+
     return [
         {
             "symbol": p.symbol,

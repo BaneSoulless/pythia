@@ -51,7 +51,7 @@ for pair in pairs:
     })
 
 # Add some mock values for visualization
-import random
+import random  # noqa: E402
 for d in data:
     d["Last Price"] = round(random.uniform(1, 60000), 2)
     change = random.uniform(-5, 5)

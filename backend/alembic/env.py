@@ -9,11 +9,11 @@ backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
 # Now import as usual
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
-from alembic import context
-from app.db.models import Base
-from app.core.config import settings
+from logging.config import fileConfig  # noqa: E402
+from sqlalchemy import engine_from_config, pool  # noqa: E402
+from alembic import context  # noqa: E402
+from app.db.models import Base  # noqa: E402
+from app.core.config import settings  # noqa: E402
 
 # Alembic Config object
 config = context.config

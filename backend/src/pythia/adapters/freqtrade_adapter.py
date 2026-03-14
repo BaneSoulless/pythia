@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import threading
-from typing import Dict, Any, Optional
 import pandas as pd
 from freqtrade.strategy import IStrategy
 try:

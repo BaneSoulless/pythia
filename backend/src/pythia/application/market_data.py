@@ -1,7 +1,7 @@
 import logging
 import yfinance as yf
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from datetime import datetime
+from typing import Dict, List, Any
 logger = logging.getLogger(__name__)
 
 class MarketDataService:

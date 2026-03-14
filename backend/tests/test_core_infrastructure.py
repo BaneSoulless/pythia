@@ -1,18 +1,17 @@
 import pytest
 import asyncio
-import time
 import sys
 import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 backend_dir = os.path.dirname(current_dir)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from pythia.infrastructure.persistence.database import Base
-from pythia.infrastructure.resilience.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
-from pythia.infrastructure.idempotency.memory_store import IdempotencyLayer
-from pythia.infrastructure.persistence.event_store import EventStore, EventLog
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+from pythia.infrastructure.persistence.database import Base  # noqa: E402
+from pythia.infrastructure.resilience.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError  # noqa: E402
+from pythia.infrastructure.idempotency.memory_store import IdempotencyLayer  # noqa: E402
+from pythia.infrastructure.persistence.event_store import EventStore  # noqa: E402
 SQL_URL = 'sqlite:///:memory:'
 engine = create_engine(SQL_URL, connect_args={'check_same_thread': False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

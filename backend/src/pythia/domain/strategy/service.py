@@ -6,13 +6,11 @@ Uses pandas_ta for Technical Analysis on Real-Time Data.
 Wait for buffer fill (Warm-up) before signaling.
 """
 import pandas as pd
-import pandas_ta as ta
 import asyncio
 import logging
-import json
+import zmq
 from typing import Dict, Any
 from pythia.infrastructure.messaging.system_bus import SystemBus
-from pythia.core.config import settings
 logger = logging.getLogger(__name__)
 
 class StrategyService:
@@ -66,7 +64,6 @@ class StrategyService:
         data_sub = self.bus.context.socket(zmq.SUB)
         data_sub.connect(f"tcp://localhost:{self.bus.ports['data']}")
         data_sub.setsockopt_string(zmq.SUBSCRIBE, '')
-        import zmq
         while True:
             try:
                 await asyncio.sleep(0.1)

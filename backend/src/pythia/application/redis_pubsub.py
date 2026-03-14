@@ -47,7 +47,7 @@ class RedisPubSubManager:
     async def subscribe(self, channel: str, callback: Callable[[str], Any]):
         if not self.enabled or not self.sub_conn:
             return
-        
+
         pubsub = self.sub_conn.pubsub()
         await pubsub.subscribe(channel)
         logger.info(f"Subscribed to Redis channel: {channel}")

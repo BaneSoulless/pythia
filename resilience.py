@@ -2,7 +2,6 @@ import asyncio
 import logging
 import time
 import sys
-from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 
 class ResilienceMonitor:
