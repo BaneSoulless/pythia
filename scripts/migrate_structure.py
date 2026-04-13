@@ -1,37 +1,73 @@
+import argparse
 import os
 import shutil
-import argparse
 from pathlib import Path
+
 
 def setup_directory(path: Path):
     path.mkdir(parents=True, exist_ok=True)
-    init_file = path / '__init__.py'
+    init_file = path / "__init__.py"
     if not init_file.exists():
         init_file.touch()
 
+
 def migrate(dry_run: bool):
     root = Path.cwd()
-    backend = root / 'backend'
-    old_app = backend / 'app'
-    src_pythia = backend / 'src' / 'pythia'
-    print(f'🚀 Avvio Migrazione Struttura PYTHIA (Dry Run: {dry_run})')
+    backend = root / "backend"
+    old_app = backend / "app"
+    src_pythia = backend / "src" / "pythia"
+    print(f"🚀 Avvio Migrazione Struttura PYTHIA (Dry Run: {dry_run})")
     if not old_app.exists() and src_pythia.exists():
-        print('Struttura già migrata in precedenza.')
+        print("Struttura già migrata in precedenza.")
         return
     if not old_app.exists():
-        print(f'Directory {old_app} non trovata.')
+        print(f"Directory {old_app} non trovata.")
         return
-    directories_to_create = [src_pythia, src_pythia / 'domain' / 'trading', src_pythia / 'domain' / 'cognitive', src_pythia / 'domain' / 'risk', src_pythia / 'application' / 'trading', src_pythia / 'application' / 'ai', src_pythia / 'infrastructure' / 'persistence', src_pythia / 'infrastructure' / 'messaging', src_pythia / 'infrastructure' / 'ai_providers', src_pythia / 'infrastructure' / 'resilience', src_pythia / 'infrastructure' / 'idempotency', src_pythia / 'infrastructure' / 'caching', src_pythia / 'adapters' / 'freqtrade', src_pythia / 'adapters' / 'exchanges', src_pythia / 'api' / 'v1', src_pythia / 'core' / 'schemas']
+    directories_to_create = [
+        src_pythia,
+        src_pythia / "domain" / "trading",
+        src_pythia / "domain" / "cognitive",
+        src_pythia / "domain" / "risk",
+        src_pythia / "application" / "trading",
+        src_pythia / "application" / "ai",
+        src_pythia / "infrastructure" / "persistence",
+        src_pythia / "infrastructure" / "messaging",
+        src_pythia / "infrastructure" / "ai_providers",
+        src_pythia / "infrastructure" / "resilience",
+        src_pythia / "infrastructure" / "idempotency",
+        src_pythia / "infrastructure" / "caching",
+        src_pythia / "adapters" / "freqtrade",
+        src_pythia / "adapters" / "exchanges",
+        src_pythia / "api" / "v1",
+        src_pythia / "core" / "schemas",
+    ]
     if not dry_run:
         for d in directories_to_create:
             setup_directory(d)
-        (src_pythia / 'py.typed').touch()
-    moves = [('core', 'core'), ('db', 'infrastructure/persistence'), ('middleware', 'api/middleware'), ('api', 'api/v1'), ('domain/cognitive', 'domain/cognitive'), ('domain/execution', 'domain/trading'), ('domain/events', 'domain/trading'), ('services/vector_store.py', 'infrastructure/persistence/vector_store.py'), ('services/ai_providers', 'infrastructure/ai_providers'), ('agents', 'application/ai'), ('ml', 'application/ai'), ('infrastructure/resilience', 'infrastructure/resilience'), ('infrastructure/idempotency', 'infrastructure/idempotency'), ('adapters/freqtrade_adapter.py', 'adapters/freqtrade/strategy_adapter.py')]
+        (src_pythia / "py.typed").touch()
+    moves = [
+        ("core", "core"),
+        ("db", "infrastructure/persistence"),
+        ("middleware", "api/middleware"),
+        ("api", "api/v1"),
+        ("domain/cognitive", "domain/cognitive"),
+        ("domain/execution", "domain/trading"),
+        ("domain/events", "domain/trading"),
+        ("services/vector_store.py", "infrastructure/persistence/vector_store.py"),
+        ("services/ai_providers", "infrastructure/ai_providers"),
+        ("agents", "application/ai"),
+        ("ml", "application/ai"),
+        ("infrastructure/resilience", "infrastructure/resilience"),
+        ("infrastructure/idempotency", "infrastructure/idempotency"),
+        ("adapters/freqtrade_adapter.py", "adapters/freqtrade/strategy_adapter.py"),
+    ]
     for old_rel, new_rel in moves:
         old_path = old_app / old_rel
         new_path = src_pythia / new_rel
         if old_path.exists():
-            print(f'In mooving: {old_path.relative_to(backend)} -> {new_path.relative_to(backend)}')
+            print(
+                f"In mooving: {old_path.relative_to(backend)} -> {new_path.relative_to(backend)}"
+            )
             if not dry_run:
                 if old_path.is_file():
                     new_path.parent.mkdir(parents=True, exist_ok=True)
@@ -45,31 +81,37 @@ def migrate(dry_run: bool):
                             shutil.copytree(str(src), str(dst), dirs_exist_ok=True)
                         else:
                             shutil.move(str(src), str(dst))
-    extracted_json = backend / 'extracted_code.json'
+    extracted_json = backend / "extracted_code.json"
     if extracted_json.exists():
         print(f"🗑️ Eliminazione '{extracted_json.name}'...")
         if not dry_run:
             extracted_json.unlink()
-    security_fixes = backend / 'SECURITY_FIXES.py'
+    security_fixes = backend / "SECURITY_FIXES.py"
     if security_fixes.exists():
         print(f"🗑️ Eliminazione file di parcheggio '{security_fixes.name}'...")
         if not dry_run:
             security_fixes.unlink()
-    print('\n✅ Migrazione struttura completata.')
+    print("\n✅ Migrazione struttura completata.")
     if not dry_run:
-        print('Rimuovere la vecchia directory backend/app/ se vuota.')
+        print("Rimuovere la vecchia directory backend/app/ se vuota.")
         try:
             shutil.rmtree(str(old_app))
         except Exception as e:
-            print(f'⚠️ Avviso: Impossibile rimuovere backend/app/: {e}')
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Migrate Pythia Structure to SOTA 2026')
-    parser.add_argument('--dry-run', action='store_true', help='Print actions without executing')
-    parser.add_argument('--execute', action='store_true', help='Execute the migration')
+            print(f"⚠️ Avviso: Impossibile rimuovere backend/app/: {e}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Migrate Pythia Structure to SOTA 2026"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print actions without executing"
+    )
+    parser.add_argument("--execute", action="store_true", help="Execute the migration")
     args = parser.parse_args()
     if args.dry_run:
         migrate(dry_run=True)
     elif args.execute:
         migrate(dry_run=False)
     else:
-        print('Specifica --dry-run oppure --execute')
+        print("Specifica --dry-run oppure --execute")

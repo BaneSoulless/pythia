@@ -2,12 +2,20 @@
 Error codes and custom exceptions for the trading bot.
 
 Provides standardized error handling across all services.
+Sanitizes 500 responses to prevent internal detail leakage.
 """
-from enum import Enum
-from typing import Optional, Dict, Any
+
+import logging
+from enum import StrEnum
+from typing import Any
+
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
 
 
-class ErrorCode(str, Enum):
+class ErrorCode(StrEnum):
     """Standardized error codes for the trading bot."""
 
     # Authentication Errors (E1xxx)
@@ -77,8 +85,8 @@ class TradingBotError(Exception):
         self,
         code: ErrorCode,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
-        original_error: Optional[Exception] = None
+        details: dict[str, Any] | None = None,
+        original_error: Exception | None = None,
     ):
         self.code = code
         self.message = message
@@ -86,86 +94,77 @@ class TradingBotError(Exception):
         self.original_error = original_error
         super().__init__(self.message)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert error to dictionary for API responses."""
         return {
             "error_code": self.code,
             "message": self.message,
-            "details": self.details
+            "details": self.details,
         }
 
 
 class AuthenticationError(TradingBotError):
     """Authentication related errors."""
-    pass
 
 
 class TradingError(TradingBotError):
     """Trading operation errors."""
-    pass
 
 
 class MarketDataError(TradingBotError):
     """Market data retrieval errors."""
-    pass
 
 
 class DatabaseError(TradingBotError):
     """Database operation errors."""
-    pass
 
 
 class AIError(TradingBotError):
     """AI/ML operation errors."""
-    pass
 
 
 class PortfolioError(TradingBotError):
     """Portfolio management errors."""
-    pass
 
 
 class BacktestError(TradingBotError):
     """Backtesting errors."""
-    pass
 
 
 class AlertError(TradingBotError):
     """Alert system errors."""
-    pass
 
 
 class ValidationError(TradingBotError):
     """Input validation errors."""
-    pass
 
-from fastapi import Request, status  # noqa: E402
-from fastapi.responses import JSONResponse  # noqa: E402
-import logging  # noqa: E402
 
-logger = logging.getLogger(__name__)
+class ResourceNotFoundError(TradingBotError):
+    """Resource not found errors."""
+
 
 async def error_handler_middleware(request: Request, call_next):
-    "global error handling middleware."
+    """Global error handling middleware with sanitized responses."""
     try:
         return await call_next(request)
     except TradingBotError as e:
-        logger.warning(f"TradingBotError: {e.code} - {e.message}", exc_info=True)
+        logger.warning(
+            "trading_bot_error",
+            error_code=e.code.value,
+            message=e.message,
+            exc_info=True,
+        )
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=e.to_dict()
+            content=e.to_dict(),
         )
-    except Exception as e:
-        logger.error(f"Unhandled exception: {str(e)}", exc_info=True)
+    except Exception:
+        logger.error("unhandled_exception", exc_info=True)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 "error_code": ErrorCode.INTERNAL_ERROR,
-                "message": "Internal server error",
-                "details": {"error": str(e)}
-            }
+                "message": "An internal error occurred. Please try again later.",
+                "details": {},
+            },
         )
-
-class ResourceNotFoundError(TradingBotError):
-    "Resource not found errors."
-    pass

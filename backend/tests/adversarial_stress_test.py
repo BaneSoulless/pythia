@@ -1,19 +1,23 @@
 import asyncio
-import time
-import logging
-import sys
-import os
 import json
-from zmq.asyncio import Context
+import logging
+import os
+import sys
+import time
+
 import zmq
+from zmq.asyncio import Context
 
 # SOTA Path Injection
 current_dir = os.path.dirname(os.path.abspath(__file__))
-root_dir = os.path.abspath(os.path.join(current_dir, '..'))
+root_dir = os.path.abspath(os.path.join(current_dir, ".."))
 sys.path.insert(0, root_dir)
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] STRESS: %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] STRESS: %(message)s"
+)
 logger = logging.getLogger("StressTest")
+
 
 async def stress_test_bus():
     """
@@ -68,9 +72,10 @@ async def stress_test_bus():
     duration = time.time() - start_time
     logger.info(f"Test Complete in {duration:.2f}s")
     logger.info(f"Success: {successes}, Failures: {failures}")
-    logger.info(f"Throughput: {successes/duration:.1f} req/s")
+    logger.info(f"Throughput: {successes / duration:.1f} req/s")
 
     ctx.term()
+
 
 if __name__ == "__main__":
     # We need the system running for this to work.

@@ -1,4 +1,5 @@
 from datetime import datetime
+
 import pandas as pd
 import streamlit as st
 from pythia.adapters.ccxt_adapter import CCXTForexAdapter
@@ -8,11 +9,17 @@ st.set_page_config(page_title="Forex Markets", page_icon="💱", layout="wide")
 st.title("💱 Forex Markets Control Plane")
 st.markdown("Global Macro & Currency Arbitrage via **CCXT (Oanda)**")
 
+
 # Initialize adapter
 @st.cache_resource
 def get_adapter():
-    adapter = CCXTForexAdapter(exchange_id="oanda")
+    try:
+        adapter = CCXTForexAdapter(exchange_id="oanda")
+    except AttributeError:
+        # Fallback sicuro per visualizzazione Dashboard 
+        adapter = CCXTForexAdapter(exchange_id="kraken")
     return adapter
+
 
 adapter = get_adapter()
 
@@ -35,15 +42,17 @@ data = []
 for pair in pairs:
     bid = round(1.0 + (id(pair) % 100) / 1000.0, 5)
     ask = bid + 0.00012
-    data.append({
-        "Pair": pair,
-        "Bid": bid,
-        "Ask": ask,
-        "Spread (Pips)": 1.2,
-        "Swap Long": -0.05,
-        "Swap Short": 0.02,
-        "Status": "🟢 Market Open"
-    })
+    data.append(
+        {
+            "Pair": pair,
+            "Bid": bid,
+            "Ask": ask,
+            "Spread (Pips)": 1.2,
+            "Swap Long": -0.05,
+            "Swap Short": 0.02,
+            "Status": "🟢 Market Open",
+        }
+    )
 
 df_forex = pd.DataFrame(data)
 st.dataframe(df_forex, use_container_width=True)

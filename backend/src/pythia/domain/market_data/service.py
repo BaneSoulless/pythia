@@ -6,21 +6,24 @@ Uses CCXT (Pro) for Real-Time WebSocket Data Ingestion.
 PUBLIC CHANNELS ONLY. NO AUTH REQUIRED.
 """
 
-import ccxt.pro as ccxt
 import asyncio
-import logging
 import json
-from typing import Dict, Any
-from pythia.infrastructure.messaging.system_bus import SystemBus
+import logging
+from typing import Any
+
+import ccxt.pro as ccxt
 from pythia.core.config import settings
+from pythia.infrastructure.messaging.system_bus import SystemBus
 
 logger = logging.getLogger(__name__)
+
 
 class MarketDataService:
     """
     Ingests real-time market data from PUBLIC exchange streams.
     """
-    def __init__(self, config: Dict[str, Any]):
+
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.bus = SystemBus(config)
         self.symbols = ["BTC/USDT", "ETH/USDT"]
@@ -33,12 +36,14 @@ class MarketDataService:
         try:
             exchange_class = getattr(ccxt, self.exchange_id)
             # NO API KEYS PROVIDED for Public Streams
-            self.exchange = exchange_class({
-                'enableRateLimit': True,
-                'options': {
-                    'defaultType': 'future',
+            self.exchange = exchange_class(
+                {
+                    "enableRateLimit": True,
+                    "options": {
+                        "defaultType": "future",
+                    },
                 }
-            })
+            )
             if settings.EXCHANGE_TESTNET:
                 self.exchange.set_sandbox_mode(True)
 
@@ -57,16 +62,16 @@ class MarketDataService:
                 payload = {
                     "type": "ticker",
                     "symbol": symbol,
-                    "last": ticker['last'],
-                    "bid": ticker['bid'],
-                    "ask": ticker['ask'],
-                    "volume": ticker['baseVolume'],
-                    "timestamp": ticker['timestamp']
+                    "last": ticker["last"],
+                    "bid": ticker["bid"],
+                    "ask": ticker["ask"],
+                    "volume": ticker["baseVolume"],
+                    "timestamp": ticker["timestamp"],
                 }
 
                 # Publish to Bus
                 if self.bus.data_socket:
-                     await self.bus.data_socket.send_string(json.dumps(payload))
+                    await self.bus.data_socket.send_string(json.dumps(payload))
 
             except ccxt.NetworkError as e:
                 logger.warning(f"MarketData: Network Error ({symbol}): {e}")
@@ -94,8 +99,10 @@ class MarketDataService:
                 await self.exchange.close()
             logger.info("MarketData Service: Shutdown")
 
-import time  # noqa: E402
+
 import random  # noqa: E402
+import time  # noqa: E402
+
 
 def run_service(config):
     print("    [DATA] Market Data Layer Initialized.")
@@ -107,14 +114,14 @@ def run_service(config):
     while True:
         try:
             # Simulate price movement
-            change = random.uniform(-0.005, 0.005)
+            change = random.uniform(-0.005, 0.005)  # noqa: S311
             price = price * (1 + change)
 
             payload = {
                 "type": "TICKER",
                 "symbol": "BTC/USD",
                 "price": round(price, 2),
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
             # Print to stdout, which the Interface Bridge captures and sends to WS
             print(json.dumps(payload), flush=True)

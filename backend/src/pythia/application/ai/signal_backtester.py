@@ -5,7 +5,6 @@ Compares probabilistic AI signals with deterministic Technical Analysis (TA) gro
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from pythia.application.ai.specialized_agents import TechnicalAnalysisAgent
 from pythia.domain.cognitive.models import TradingSignal
@@ -19,13 +18,13 @@ class SignalBacktester:
     Part of the AI Control Plane (Module 12+).
     """
 
-    def __init__(self, ta_agent: Optional[TechnicalAnalysisAgent] = None):
+    def __init__(self, ta_agent: TechnicalAnalysisAgent | None = None):
         self.ta_agent = ta_agent or TechnicalAnalysisAgent()
-        self.history: List[Dict] = []
+        self.history: list[dict] = []
 
     def evaluate_signal(
-        self, signal: TradingSignal, market_prices: List[float]
-    ) -> Dict:
+        self, signal: TradingSignal, market_prices: list[float]
+    ) -> dict:
         """
         Compare a single TradingSignal with TA indicators.
 
@@ -50,8 +49,8 @@ class SignalBacktester:
 
         # Soft agreement for divergence
         if expected_direction == "neutral" or ta_direction == "neutral":
-             if agreement == 0.0:
-                 agreement = 0.3 # Partial penalty for neutral/directional mismatch
+            if agreement == 0.0:
+                agreement = 0.3  # Partial penalty for neutral/directional mismatch
 
         evaluation = {
             "signal_timestamp": datetime.now().isoformat(),
@@ -61,7 +60,7 @@ class SignalBacktester:
             "agreement_score": agreement,
             "confidence": signal.confidence,
             "reason": signal.reason,
-            "valid": agreement >= 0.7 or signal.confidence < 0.6
+            "valid": agreement >= 0.7 or signal.confidence < 0.6,
         }
 
         self.history.append(evaluation)

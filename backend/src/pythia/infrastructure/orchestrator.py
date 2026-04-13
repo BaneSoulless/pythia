@@ -12,20 +12,23 @@ import asyncio
 import logging
 import os
 import signal
-import subprocess
 import sys
-import threading
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pythia.adapters.freqtrade_adapter import FreqtradeStrategy
 from pythia.api.v1.health import router as health_router
 from pythia.api.v1.market_data import router as market_data_router
 from pythia.api.v1.portfolio import router as portfolio_router
 from pythia.api.v1.trades import router as trades_router
 from pythia.infrastructure.monitoring.prometheus_exporter import get_metrics_exporter
 from pythia.infrastructure.secrets.secrets_manager import SecretsManager
+import ccxt.async_support as ccxt
+from pythia.adapters.ml_gate import MLMetaGate
+import pandas as pd
+from ta.momentum import RSIIndicator
+from ta.trend import EMAIndicator, ADXIndicator
+from ta.volatility import AverageTrueRange
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,12 +68,14 @@ class PythiaSupervisor:
     """Supervises all Pythia services with graceful shutdown."""
 
     def __init__(self):
-        self.processes: list[subprocess.Popen] = []
         self.should_exit = False
         self.loop = None
         self.secrets = SecretsManager(allow_key_generation=True)
         self.metrics = get_metrics_exporter()
         self.api_app = create_api_app()
+        self.PAPER_TRADING = True  # Forced YOLO paper trading mode
+        self.DRY_RUN = True
+        logger.warning("[ORCHESTRATOR] ⚠️ PAPER_TRADING / DRY_RUN mode ENABLED. No real orders will be placed.")
 
     def _load_secrets(self):
         """Load encrypted secrets into environment variables."""
@@ -81,25 +86,6 @@ class PythiaSupervisor:
             logger.warning(
                 "[ORCHESTRATOR] No encrypted env found, falling back to plaintext"
             )
-
-    def _run_freqtrade_sync(self):
-        """Run Freqtrade in a thread (blocking API)."""
-        try:
-            logger.info("[ORCHESTRATOR] Starting Freqtrade Cognitive Strategy...")
-            config = {
-                "dry_run": True,
-                "max_open_trades": 3,
-                "stake_currency": "USDT",
-                "stake_amount": 100,
-                "db_url": os.getenv("DATABASE_URL", "sqlite:///./data/pythia_prod.db"),
-            }
-            os.environ["SQLITE_DB_PATH"] = os.getenv(
-                "SQLITE_DB_PATH", "/app/data/pythia_prod.db"
-            )
-            _ = FreqtradeStrategy(config)
-            logger.info("[ORCHESTRATOR] Freqtrade Strategy initialized")
-        except Exception as exc:
-            logger.error("[ORCHESTRATOR] Failed to initialize Freqtrade: %s", exc)
 
     async def start_api_server(self):
         """Launch FastAPI via uvicorn as an asyncio task."""
@@ -114,11 +100,6 @@ class PythiaSupervisor:
         server = uvicorn.Server(config)
         await server.serve()
 
-    async def start_freqtrade(self):
-        """Launch Freqtrade strategy in a daemon thread."""
-        thread = threading.Thread(target=self._run_freqtrade_sync, daemon=True)
-        thread.start()
-
     async def start_metrics(self):
         """Launch Prometheus exporter."""
         logger.info("[ORCHESTRATOR] Starting Prometheus Exporter on :9090...")
@@ -127,46 +108,6 @@ class PythiaSupervisor:
             logger.info("[ORCHESTRATOR] Prometheus metrics server started on :9090")
         except OSError as exc:
             logger.error("[ORCHESTRATOR] Failed to start metrics server: %s", exc)
-
-    async def start_streamlit(self):
-        """Launch Streamlit UI as a subprocess."""
-        logger.info("[ORCHESTRATOR] Starting Streamlit Dashboard on :8501...")
-        cmd = [
-            "streamlit",
-            "run",
-            "backend/src/pythia/adapters/streamlit_app.py",
-            "--server.address",
-            os.environ.get("BIND_HOST", "127.0.0.1"),
-            "--server.port",
-            "8501",
-            "--browser.gatherUsageStats",
-            "false",
-        ]
-
-        try:
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-            )
-            self.processes.append(proc)
-
-            while not self.should_exit:
-                if proc.stdout:
-                    line = proc.stdout.readline()
-                    if line:
-                        logger.info("[STREAMLIT] %s", line.strip())
-
-                if proc.poll() is not None:
-                    logger.error(
-                        "[ORCHESTRATOR] Streamlit process terminated unexpectedly"
-                    )
-                    break
-                await asyncio.sleep(0.1)
-        except OSError as exc:
-            logger.error("[ORCHESTRATOR] Failed to launch Streamlit: %s", exc)
 
     async def prediction_market_worker(self):
         """Background worker for prediction market arbitrage scanning."""
@@ -232,6 +173,64 @@ class PythiaSupervisor:
                 logger.error("[ORCHESTRATOR] PM Worker Error: %s", exc)
                 await asyncio.sleep(30)
 
+    async def ml_dry_run_worker(self):
+        """Background worker for ML MetaGate dry-run and data ingestion."""
+        logger.info("[ORCHESTRATOR] Starting ML Meta-Labeling Dry-Run Worker...")
+        exchange = ccxt.binance({'enableRateLimit': True})
+        ml_gate = MLMetaGate()
+        symbols = ['BTC/USDT', 'ETH/USDT']
+        
+        while not self.should_exit:
+            try:
+                for symbol in symbols:
+                    logger.debug(f"[ORCHESTRATOR] Fetching 30d OHLCV for {symbol}...")
+                    # 1h candles, 30 days = 720 candles
+                    since = exchange.milliseconds() - 30 * 24 * 60 * 60 * 1000
+                    ohlcv = await exchange.fetch_ohlcv(symbol, timeframe='1h', since=since, limit=1000)
+                    
+                    if not ohlcv:
+                        continue
+                        
+                    df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+                    
+                    # Compute required features using `ta` lib
+                    df['rsi'] = RSIIndicator(close=df['close'], window=14).rsi()
+                    df['ema_fast'] = EMAIndicator(close=df['close'], window=9).ema_indicator()
+                    df['ema_slow'] = EMAIndicator(close=df['close'], window=21).ema_indicator()
+                    
+                    adx = ADXIndicator(high=df['high'], low=df['low'], close=df['close'], window=14)
+                    df['adx_14'] = adx.adx()
+                    
+                    atr = AverageTrueRange(high=df['high'], low=df['low'], close=df['close'], window=14)
+                    df['atr_volatility'] = atr.average_true_range()
+                    
+                    df['volume_sma'] = df['volume'].rolling(window=20).mean()
+                    df['volume_sma_ratio'] = df['volume'] / df['volume_sma']
+                    
+                    # Drop NAs computed by TA
+                    df.dropna(inplace=True)
+                    
+                    # Run it through MLMetaGate
+                    df = ml_gate.filter_signals(df)
+                    
+                    # Fetch signals where enter_long == 1
+                    signals = df[df['enter_long'] == 1]
+                    logger.info(f"[ML-GATE] {symbol}: Found {len(signals)} filtered long signals in the last 30 days.")
+                    
+                    # Record the latest valid signal confidence to Prometheus
+                    if not signals.empty:
+                        latest_confidence = signals.iloc[-1]['ml_confidence']
+                        self.metrics.record_ml_signal(symbol, float(latest_confidence))
+                        logger.info(f"[PROMETHEUS] Injected ML confidence for {symbol}: {latest_confidence:.4f}")
+                        
+                # Wait 10 minutes before polling new candles
+                await asyncio.sleep(600)
+            except Exception as exc:
+                logger.error("[ORCHESTRATOR] ML Dry-Run Error: %s", exc)
+                await asyncio.sleep(60)
+        
+        await exchange.close()
+
     async def run(self):
         """Start all services concurrently."""
         self._load_secrets()
@@ -244,28 +243,18 @@ class PythiaSupervisor:
                     sig, lambda: asyncio.create_task(self.shutdown())
                 )
 
-        logger.info("[ORCHESTRATOR] Pythia v4.0 — Starting all services...")
+        logger.info("[ORCHESTRATOR] Pythia v4.0 — Starting central services...")
         await asyncio.gather(
             self.start_api_server(),
             self.start_metrics(),
-            self.start_freqtrade(),
-            self.start_streamlit(),
             self.prediction_market_worker(),
+            self.ml_dry_run_worker(),
         )
 
     async def shutdown(self):
         """Graceful shutdown of all managed processes."""
         logger.info("[ORCHESTRATOR] Initiating graceful shutdown...")
         self.should_exit = True
-        for proc in self.processes:
-            logger.info("[ORCHESTRATOR] Terminating process %d", proc.pid)
-            proc.terminate()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                logger.warning("[ORCHESTRATOR] Force-killing process %d", proc.pid)
-                proc.kill()
-
         logger.info("[ORCHESTRATOR] Pythia services stopped")
         sys.exit(0)
 

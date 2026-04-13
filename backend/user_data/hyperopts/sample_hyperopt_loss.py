@@ -1,11 +1,9 @@
 from datetime import datetime
 from math import exp
 
-from pandas import DataFrame
-
 from freqtrade.constants import Config
 from freqtrade.optimize.hyperopt import IHyperOptLoss
-
+from pandas import DataFrame
 
 # Define some constants:
 

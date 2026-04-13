@@ -1,39 +1,80 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-// FRONTEND SOVEREIGN v3
-// AUTH: JWT REQUIRED
-// ENDPOINT: http://localhost:8000
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws';
 
-const API_URL = 'http://localhost:8000';
-const WS_URL = 'ws://localhost:8000/ws';
-
-export default function App() {
-    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!token);
-
-    if (!isAuthenticated) {
-        return <LoginScreen onLogin={(t) => {
-            setToken(t);
-            setIsAuthenticated(true);
-            localStorage.setItem('token', t);
-        }} />;
-    }
-
-    return <MonitorDashboard token={token!} onLogout={() => {
-        setToken(null);
-        setIsAuthenticated(false);
-        localStorage.removeItem('token');
-    }} />;
+interface TokenPair {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
 }
 
-function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
-    const [username, setUsername] = useState('admin');
-    const [password, setPassword] = useState('admin');
+let inMemoryToken: string | null = null;
+let inMemoryRefresh: string | null = null;
+
+function getToken(): string | null {
+    return inMemoryToken;
+}
+
+function setTokens(pair: TokenPair | null): void {
+    if (pair) {
+        inMemoryToken = pair.access_token;
+        inMemoryRefresh = pair.refresh_token;
+    } else {
+        inMemoryToken = null;
+        inMemoryRefresh = null;
+    }
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+    if (!inMemoryRefresh) return null;
+    try {
+        const res = await fetch(`${API_URL}/api/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: inMemoryRefresh }),
+        });
+        if (!res.ok) return null;
+        const data: TokenPair = await res.json();
+        setTokens(data);
+        return data.access_token;
+    } catch {
+        return null;
+    }
+}
+
+export default function App() {
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!getToken());
+
+    const handleLogin = useCallback((pair: TokenPair) => {
+        setTokens(pair);
+        setIsAuthenticated(true);
+    }, []);
+
+    const handleLogout = useCallback(() => {
+        setTokens(null);
+        setIsAuthenticated(false);
+    }, []);
+
+    if (!isAuthenticated) {
+        return <LoginScreen onLogin={handleLogin} />;
+    }
+
+    return <MonitorDashboard onLogout={handleLogout} />;
+}
+
+function LoginScreen({ onLogin }: { onLogin: (pair: TokenPair) => void }) {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!username.trim() || !password.trim()) {
+            setError('Username and password required');
+            return;
+        }
         setLoading(true);
         setError('');
 
@@ -48,12 +89,15 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
                 body: formData
             });
 
-            if (!res.ok) throw new Error('Invalid Credentials');
+            if (!res.ok) {
+                setError('Invalid credentials');
+                return;
+            }
 
-            const data = await res.json();
-            onLogin(data.access_token);
-        } catch (err) {
-            setError(String(err));
+            const data: TokenPair = await res.json();
+            onLogin(data);
+        } catch {
+            setError('Connection failed. Check server status.');
         } finally {
             setLoading(false);
         }
@@ -67,16 +111,30 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
             <form onSubmit={handleLogin} style={{ border: '1px solid #333', padding: '40px', width: '300px' }}>
                 <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>ACCESS TERMINAL</h2>
                 <div style={{ marginBottom: '10px' }}>
-                    <label>IDENTITY</label>
-                    <input type="text" value={username} onChange={e => setUsername(e.target.value)}
-                        style={{ width: '100%', padding: '8px', background: '#111', border: '1px solid #333', color: '#fff' }} />
+                    <label htmlFor="login-username">IDENTITY</label>
+                    <input
+                        id="login-username"
+                        type="text"
+                        value={username}
+                        onChange={e => setUsername(e.target.value)}
+                        autoComplete="username"
+                        aria-label="Username"
+                        style={{ width: '100%', padding: '8px', background: '#111', border: '1px solid #333', color: '#fff' }}
+                    />
                 </div>
                 <div style={{ marginBottom: '20px' }}>
-                    <label>KEY</label>
-                    <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                        style={{ width: '100%', padding: '8px', background: '#111', border: '1px solid #333', color: '#fff' }} />
+                    <label htmlFor="login-password">KEY</label>
+                    <input
+                        id="login-password"
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        autoComplete="current-password"
+                        aria-label="Password"
+                        style={{ width: '100%', padding: '8px', background: '#111', border: '1px solid #333', color: '#fff' }}
+                    />
                 </div>
-                {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
+                {error && <div role="alert" style={{ color: '#f44', marginBottom: '10px' }}>{error}</div>}
                 <button type="submit" disabled={loading} style={{
                     width: '100%', padding: '10px', background: '#0f0', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer'
                 }}>
@@ -87,57 +145,81 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
     );
 }
 
-function MonitorDashboard({ token, onLogout }: { token: string, onLogout: () => void }) {
-    const [status, setStatus] = useState('CONNECTING...');
+function MonitorDashboard({ onLogout }: { onLogout: () => void }) {
+    const [connectionStatus, setConnectionStatus] = useState('CONNECTING...');
     const [logs, setLogs] = useState<string[]>([]);
     const ws = useRef<WebSocket | null>(null);
 
     useEffect(() => {
-        let reconnectInterval: ReturnType<typeof setTimeout>;
+        let reconnectTimeout: ReturnType<typeof setTimeout>;
+        let isMounted = true;
 
-        const connect = () => {
-            setStatus('AUTHENTICATING UPLINK...');
+        const connect = async () => {
+            if (!isMounted) return;
+            setConnectionStatus('AUTHENTICATING UPLINK...');
+
+            let token = getToken();
+            if (!token) {
+                token = await refreshAccessToken();
+                if (!token) {
+                    onLogout();
+                    return;
+                }
+            }
+
             try {
-                // SECURE HANDSHAKE
-                const socket = new WebSocket(`${WS_URL}?token=${token}`);
+                const socket = new WebSocket(`${WS_URL}`);
                 ws.current = socket;
 
                 socket.onopen = () => {
-                    setStatus('🟢 SECURE LINK ESTABLISHED');
-                    setLogs(prev => [`[${new Date().toLocaleTimeString()}] >>> HANDSHAKE VERIFIED`, ...prev]);
+                    socket.send(JSON.stringify({ type: 'auth', token }));
+                    setConnectionStatus('🟢 SECURE LINK ESTABLISHED');
+                    if (isMounted) {
+                        setLogs(prev => [`[${new Date().toLocaleTimeString()}] >>> HANDSHAKE VERIFIED`, ...prev]);
+                    }
                 };
 
                 socket.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${JSON.stringify(data, null, 2)}`, ...prev.slice(0, 50)]);
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (isMounted) {
+                            setLogs(prev => [
+                                `[${new Date().toLocaleTimeString()}] ${JSON.stringify(data, null, 2)}`,
+                                ...prev.slice(0, 50)
+                            ]);
+                        }
+                    } catch {
+                        /* ignore malformed messages */
+                    }
                 };
 
-                socket.onerror = (err) => {
-                    console.error(err);
-                    setStatus('🔴 CONNECTION ERROR');
+                socket.onerror = () => {
+                    if (isMounted) setConnectionStatus('🔴 CONNECTION ERROR');
                 };
 
                 socket.onclose = (e) => {
+                    if (!isMounted) return;
                     if (e.code === 4003) {
-                        setStatus('⛔ ACCESS DENIED');
-                        onLogout(); // Force logout on auth fail
+                        setConnectionStatus('⛔ ACCESS DENIED');
+                        onLogout();
                     } else {
-                        setStatus('🟡 DISCONNECTED (RETRYING...)');
-                        reconnectInterval = setTimeout(connect, 3000);
+                        setConnectionStatus('🟡 DISCONNECTED (RETRYING...)');
+                        reconnectTimeout = setTimeout(connect, 3000);
                     }
                 };
-            } catch (e) {
-                setStatus('❌ CRITICAL FAILURE');
+            } catch {
+                if (isMounted) setConnectionStatus('❌ CRITICAL FAILURE');
             }
         };
 
         connect();
 
         return () => {
+            isMounted = false;
             if (ws.current) ws.current.close();
-            clearTimeout(reconnectInterval);
+            clearTimeout(reconnectTimeout);
         };
-    }, [token, onLogout]);
+    }, [onLogout]);
 
     return (
         <div style={{
@@ -148,7 +230,7 @@ function MonitorDashboard({ token, onLogout }: { token: string, onLogout: () => 
             padding: '20px',
             overflow: 'hidden'
         }}>
-            <div style={{
+            <header style={{
                 borderBottom: '2px solid #00ff41',
                 paddingBottom: '10px',
                 marginBottom: '20px',
@@ -158,12 +240,18 @@ function MonitorDashboard({ token, onLogout }: { token: string, onLogout: () => 
             }}>
                 <h1 style={{ margin: 0, fontSize: '24px' }}>NEXUS MONITOR // SECURE</h1>
                 <div>
-                    <span style={{ fontWeight: 'bold', marginRight: '20px' }}>{status}</span>
-                    <button onClick={onLogout} style={{ background: 'red', border: 'none', padding: '5px 10px', cursor: 'pointer' }}>LOGOUT</button>
+                    <span style={{ fontWeight: 'bold', marginRight: '20px' }}>{connectionStatus}</span>
+                    <button
+                        onClick={onLogout}
+                        aria-label="Logout"
+                        style={{ background: 'red', border: 'none', padding: '5px 10px', cursor: 'pointer', color: '#fff' }}
+                    >
+                        LOGOUT
+                    </button>
                 </div>
-            </div>
+            </header>
 
-            <div style={{
+            <main style={{
                 backgroundColor: '#0a0a0a',
                 border: '1px solid #333',
                 height: '80vh',
@@ -175,7 +263,7 @@ function MonitorDashboard({ token, onLogout }: { token: string, onLogout: () => 
                 {logs.map((log, i) => (
                     <div key={i} style={{ borderBottom: '1px solid #111', padding: '4px 0' }}>{log}</div>
                 ))}
-            </div>
+            </main>
         </div>
     );
 }

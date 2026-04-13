@@ -34,7 +34,8 @@ backend/app/
 └── tests/                   # Adversarial Verification Suite
 ```
 
-### 2.2 The Nervous System: SystemBus (SOTA Proxy)
+### 2.2 The Nervous System (DEPRECATED): SystemBus (ZMQ Proxy)
+> **[DEPRECATION NOTICE - V4.0]**: ZeroMQ is officially deprecated for Intelligence routing in favor of Redis Pub/Sub and Celery queues to align with strict Prediction Market pipelines.
 - **Topology**: ZMQ Proxy (XSUB/XPUB) Forwarder.
 - **Protocol**: 
     - **Strategy** (Publisher) -> Connects to `5556` (Frontend)

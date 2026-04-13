@@ -2,20 +2,20 @@
 WebSocket Authentication Middleware
 Implements: JWT-based authentication for WebSocket connections
 """
-from fastapi import WebSocket, status
-from jose import jwt, JWTError
-from typing import Optional
-from sqlalchemy.orm import Session
 
-from pythia.infrastructure.persistence.models import User
-from pythia.infrastructure.persistence.database import get_db
-from pythia.core.config import settings
 import logging
+
+from fastapi import WebSocket, status
+from jose import JWTError, jwt
+
+from pythia.core.config import settings
+from pythia.infrastructure.persistence.database import get_db
+from pythia.infrastructure.persistence.models import User
 
 logger = logging.getLogger(__name__)
 
 
-async def authenticate_websocket(websocket: WebSocket) -> Optional[User]:
+async def authenticate_websocket(websocket: WebSocket) -> User | None:
     """
     Authenticate WebSocket connection via JWT token.
 
@@ -40,26 +40,32 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[User]:
 
         if not token:
             logger.warning("websocket_auth_failed", reason="no_token")
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required"
+            )
             return None
 
         # Verify JWT
         try:
             payload = jwt.decode(
-                token,
-                settings.SECRET_KEY,
-                algorithms=[settings.ALGORITHM]
+                token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
             )
             user_id = payload.get("sub")
 
             if not user_id:
                 logger.warning("websocket_auth_failed", reason="invalid_token_payload")
-                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+                await websocket.close(
+                    code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token"
+                )
                 return None
 
         except JWTError as e:
-            logger.warning("websocket_auth_failed", reason="jwt_decode_error", error=str(e))
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+            logger.warning(
+                "websocket_auth_failed", reason="jwt_decode_error", error=str(e)
+            )
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token"
+            )
             return None
 
         # Fetch user from database
@@ -68,16 +74,26 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[User]:
             user = db.query(User).filter(User.id == int(user_id)).first()
 
             if not user:
-                logger.warning("websocket_auth_failed", reason="user_not_found", user_id=user_id)
-                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User not found")
+                logger.warning(
+                    "websocket_auth_failed", reason="user_not_found", user_id=user_id
+                )
+                await websocket.close(
+                    code=status.WS_1008_POLICY_VIOLATION, reason="User not found"
+                )
                 return None
 
             if not user.is_active:
-                logger.warning("websocket_auth_failed", reason="user_inactive", user_id=user_id)
-                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User inactive")
+                logger.warning(
+                    "websocket_auth_failed", reason="user_inactive", user_id=user_id
+                )
+                await websocket.close(
+                    code=status.WS_1008_POLICY_VIOLATION, reason="User inactive"
+                )
                 return None
 
-            logger.info("websocket_authenticated", user_id=user.id, username=user.username)
+            logger.info(
+                "websocket_authenticated", user_id=user.id, username=user.username
+            )
             return user
 
         finally:
@@ -85,40 +101,41 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[User]:
 
     except Exception as e:
         logger.error("websocket_auth_error", error=str(e), exc_info=True)
-        await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Authentication error")
+        await websocket.close(
+            code=status.WS_1011_INTERNAL_ERROR, reason="Authentication error"
+        )
         return None
 
 
 async def verify_portfolio_ownership(
-    websocket: WebSocket,
-    user: User,
-    portfolio_id: int,
-    db: Session
+    user: User, portfolio_id: int
 ) -> bool:
     """
     Verify that user owns the requested portfolio.
 
     Returns:
-        True if authorized, False otherwise (connection closed)
+        True if authorized, False otherwise
     """
+    from pythia.infrastructure.persistence.database import get_db
     from pythia.infrastructure.persistence.models import Portfolio
 
-    portfolio = db.query(Portfolio).filter(
-        Portfolio.id == portfolio_id,
-        Portfolio.user_id == user.id
-    ).first()
-
-    if not portfolio:
-        logger.warning(
-            "websocket_authorization_failed",
-            user_id=user.id,
-            portfolio_id=portfolio_id,
-            reason="portfolio_not_owned"
+    db = next(get_db())
+    try:
+        portfolio = (
+            db.query(Portfolio)
+            .filter(Portfolio.id == portfolio_id, Portfolio.user_id == user.id)
+            .first()
         )
-        await websocket.close(
-            code=status.WS_1008_POLICY_VIOLATION,
-            reason="Portfolio access denied"
-        )
-        return False
 
-    return True
+        if not portfolio:
+            logger.warning(
+                "websocket_authorization_failed",
+                user_id=user.id,
+                portfolio_id=portfolio_id,
+                reason="portfolio_not_owned",
+            )
+            return False
+
+        return True
+    finally:
+        db.close()

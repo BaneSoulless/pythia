@@ -4,10 +4,14 @@ SOTA 2026 Performance
 
 Provides low-latency inference for quantized neural networks.
 """
-import onnxruntime as ort
-import numpy as np
+
 import logging
+
+import numpy as np
+import onnxruntime as ort
+
 logger = logging.getLogger(__name__)
+
 
 class ONNXModelEngine:
     """
@@ -25,13 +29,15 @@ class ONNXModelEngine:
     def _load_model(self):
         try:
             sess_options = ort.SessionOptions()
-            sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            sess_options.graph_optimization_level = (
+                ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            )
             self.session = ort.InferenceSession(self.model_path, sess_options)
             self.input_name = self.session.get_inputs()[0].name
             self.output_name = self.session.get_outputs()[0].name
-            logger.info(f'ONNX Model loaded: {self.model_path}')
+            logger.info(f"ONNX Model loaded: {self.model_path}")
         except Exception as e:
-            logger.error(f'Failed to load ONNX model {self.model_path}: {e}')
+            logger.error(f"Failed to load ONNX model {self.model_path}: {e}")
             self.session = None
 
     def predict(self, input_data: np.ndarray) -> np.ndarray:
@@ -51,5 +57,5 @@ class ONNXModelEngine:
             result = self.session.run([self.output_name], inputs)
             return result[0]
         except Exception as e:
-            logger.error(f'Inference failed: {e}')
+            logger.error(f"Inference failed: {e}")
             return np.zeros((1, 1))

@@ -1,10 +1,12 @@
 """
 Integration Tests for AI Ensemble
 """
-import pytest
+
 import numpy as np
-from pythia.application.ai.reinforcement_learning import TradingRLAgent
+import pytest
 from pythia.application.ai.ensemble import AIModelEnsemble, MultiAPIManager
+from pythia.application.ai.reinforcement_learning import TradingRLAgent
+
 
 class TestAIEnsemble:
     """Test suite for AI ensemble functionality"""
@@ -20,12 +22,12 @@ class TestAIEnsemble:
     @pytest.fixture
     def ensemble(self, models):
         """Create ensemble"""
-        return AIModelEnsemble(models, voting_strategy='majority')
+        return AIModelEnsemble(models, voting_strategy="majority")
 
     def test_ensemble_creation(self, ensemble, models):
         """Test ensemble is created correctly"""
         assert len(ensemble.models) == 3
-        assert ensemble.voting_strategy == 'majority'
+        assert ensemble.voting_strategy == "majority"
         assert len(ensemble.model_weights) == 3
 
     def test_majority_voting(self, ensemble):
@@ -37,14 +39,14 @@ class TestAIEnsemble:
 
     def test_unanimous_voting(self, models):
         """Test unanimous voting strategy"""
-        ensemble = AIModelEnsemble(models, voting_strategy='unanimous')
+        ensemble = AIModelEnsemble(models, voting_strategy="unanimous")
         state = np.random.random(10)
         action, confidence = ensemble.predict(state)
         assert action in [0, 1, 2]
 
     def test_weighted_voting(self, models):
         """Test weighted voting strategy"""
-        ensemble = AIModelEnsemble(models, voting_strategy='weighted')
+        ensemble = AIModelEnsemble(models, voting_strategy="weighted")
         state = np.random.random(10)
         action, confidence = ensemble.predict(state)
         assert action in [0, 1, 2]
@@ -65,6 +67,7 @@ class TestAIEnsemble:
         assert len(ensemble.models) == 4
         assert len(ensemble.model_weights) == 4
 
+
 class TestMultiAPIManager:
     """Test suite for multi-API manager"""
 
@@ -73,43 +76,49 @@ class TestMultiAPIManager:
         """Create mock API clients"""
 
         class MockAPI:
-
             def __init__(self, name, should_fail=False):
                 self.name = name
                 self.should_fail = should_fail
 
             def get_quote(self, symbol):
                 if self.should_fail:
-                    raise Exception(f'{self.name} failed')
-                return {'symbol': symbol, 'price': 100.0, 'source': self.name}
-        return [{'name': 'primary', 'client': MockAPI('primary'), 'priority': 1}, {'name': 'backup', 'client': MockAPI('backup'), 'priority': 2}, {'name': 'fallback', 'client': MockAPI('fallback'), 'priority': 3}]
+                    raise Exception(f"{self.name} failed")
+                return {"symbol": symbol, "price": 100.0, "source": self.name}
+
+        return [
+            {"name": "primary", "client": MockAPI("primary"), "priority": 1},
+            {"name": "backup", "client": MockAPI("backup"), "priority": 2},
+            {"name": "fallback", "client": MockAPI("fallback"), "priority": 3},
+        ]
 
     def test_api_manager_creation(self, mock_apis):
         """Test API manager initialization"""
         manager = MultiAPIManager(mock_apis)
         assert len(manager.apis) == 3
-        assert manager.apis[0]['name'] == 'primary'
+        assert manager.apis[0]["name"] == "primary"
 
     def test_successful_quote_fetch(self, mock_apis):
         """Test fetching quote from primary API"""
         manager = MultiAPIManager(mock_apis)
-        quote = manager.get_quote('AAPL')
-        assert quote['symbol'] == 'AAPL'
-        assert quote['source'] == 'primary'
+        quote = manager.get_quote("AAPL")
+        assert quote["symbol"] == "AAPL"
+        assert quote["source"] == "primary"
 
     def test_failover_to_backup(self, mock_apis):
         """Test failover when primary fails"""
-        mock_apis[0]['client'].should_fail = True
+        mock_apis[0]["client"].should_fail = True
         manager = MultiAPIManager(mock_apis)
-        quote = manager.get_quote('AAPL')
-        assert quote['source'] == 'backup'
+        quote = manager.get_quote("AAPL")
+        assert quote["source"] == "backup"
 
     def test_all_apis_fail(self, mock_apis):
         """Test behavior when all APIs fail"""
         for api in mock_apis:
-            api['client'].should_fail = True
+            api["client"].should_fail = True
         manager = MultiAPIManager(mock_apis)
-        with pytest.raises(Exception, match='All APIs failed'):
-            manager.get_quote('AAPL')
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+        with pytest.raises(Exception, match="All APIs failed"):
+            manager.get_quote("AAPL")
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

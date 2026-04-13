@@ -26,4 +26,4 @@ stake_amount: 50
 max_open_trades: 3
 confidence_threshold: 0.5
 stop_loss_cap: 0.05
-take_profit_default: 0.03
+take_profit_default: 0.06

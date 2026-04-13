@@ -13,13 +13,44 @@ services:
       - DATABASE_URL=sqlite:///./data/pythia_prod.db
       - SQLITE_DB_PATH=/app/data/pythia_prod.db
     ports:
-      - "8501:8501"
+      - "8000:8000"
       - "9090:9090"
     volumes:
       - ./data:/app/data
     networks:
       - pythia-network
-    restart: always
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  pythia-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pythia_dashboard
+    env_file:
+      - .env
+    environment:
+      - EXECUTION_MODE=production
+      - DATABASE_URL=sqlite:///./data/pythia_prod.db
+    command: [ "streamlit", "run", "backend/src/pythia/adapters/streamlit_app.py", "--server.address", "0.0.0.0", "--server.port", "8501" ]
+    ports:
+      - "8501:8501"
+    depends_on:
+      - pythia-backend
+    volumes:
+      - ./data:/app/data
+    networks:
+      - pythia-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   prometheus:
     image: prom/prometheus:latest
@@ -40,7 +71,7 @@ services:
     depends_on:
       - prometheus
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=pythia_admin
     volumes:
@@ -49,9 +80,45 @@ services:
       - pythia-network
     restart: always
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: pythia_db
+    environment:
+      POSTGRES_USER: pythia
+      POSTGRES_PASSWORD: pythia_password
+      POSTGRES_DB: pythia_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pythia-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U pythia -d pythia_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: pythia_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pythia-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 networks:
   pythia-network:
     driver: bridge
 
 volumes:
   grafana_data:
+  postgres_data:
+  redis_data:

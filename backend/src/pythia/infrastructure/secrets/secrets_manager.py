@@ -10,25 +10,8 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# === PREDICTION MARKETS KEYS ===
-KALSHI_API_KEY: str = os.getenv("KALSHI_API_KEY", "")
-KALSHI_PRIVATE_KEY_PATH: str = os.getenv("KALSHI_PRIVATE_KEY_PATH", "")
-POLYMARKET_WALLET_KEY: str = os.getenv("POLYMARKET_WALLET_KEY", "")
-
-
-def validate_secrets() -> dict:
-    """Verifica che tutti i secrets critici siano presenti."""
-    missing = []
-    warnings = []
-
-    if not KALSHI_API_KEY:
-        warnings.append("KALSHI_API_KEY non configurata")
-    if not KALSHI_PRIVATE_KEY_PATH or not os.path.exists(KALSHI_PRIVATE_KEY_PATH):
-        warnings.append("KALSHI_PRIVATE_KEY_PATH non valido o file non trovato")
-    if not POLYMARKET_WALLET_KEY:
-        warnings.append("POLYMARKET_WALLET_KEY non configurata")
-
-    return {"missing_critical": missing, "warnings": warnings}
+# Global plaintext secret loading removed for DevSecOps compliance.
+# Use SecretsManager to inject parameters at runtime to os.environ.
 
 
 class SecretsManager:
@@ -43,6 +26,13 @@ class SecretsManager:
         encryption_key_path: Path = Path(".encryption_key"),
         allow_key_generation: bool = False,
     ):
+        # 1. Prioritize secure memory injection via ENV
+        master_key_env = os.getenv("PYTHIA_MASTER_KEY")
+        if master_key_env:
+            self.cipher = Fernet(master_key_env.encode())
+            return
+            
+        # 2. Fallback to disk (for dev/local testing)
         if not encryption_key_path.exists():
             if allow_key_generation:
                 key = Fernet.generate_key()
@@ -54,8 +44,7 @@ class SecretsManager:
                 )
             else:
                 raise FileNotFoundError(
-                    f"Encryption key not found at {encryption_key_path}. "
-                    "Provision the key or set allow_key_generation=True for dev."
+                    f"Encryption key not found (no PYTHIA_MASTER_KEY env, and no file at {encryption_key_path})."
                 )
 
         self.cipher = Fernet(encryption_key_path.read_bytes())

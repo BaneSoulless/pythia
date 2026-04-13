@@ -1,14 +1,14 @@
 import logging
-from typing import List, Dict
 from difflib import SequenceMatcher
 
 logger = logging.getLogger(__name__)
+
 
 class ArbitrageDetector:
     def __init__(self, min_roi: float = 0.01):
         self.min_roi = min_roi
 
-    def find_opportunities(self, kalshi_markets, polymarket_markets) -> List[Dict]:
+    def find_opportunities(self, kalshi_markets, polymarket_markets) -> list[dict]:
         opportunities = []
 
         for k_market in kalshi_markets:
@@ -18,7 +18,7 @@ class ArbitrageDetector:
 
                     if arb and arb["roi"] >= self.min_roi:
                         opportunities.append(arb)
-                        logger.info(f"🎯 Arbitrage: {arb['roi']*100:.2f}% ROI")
+                        logger.info(f"🎯 Arbitrage: {arb['roi'] * 100:.2f}% ROI")
 
         return opportunities
 

@@ -1,19 +1,22 @@
 """
 Fix for Alembic - Add parent directory to path
 """
+
 import sys
 from pathlib import Path
 
-# Add backend directory to path so 'app' module can be imported
+# Add backend directory to path so 'pythia' module can be imported
 backend_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(backend_dir))
+sys.path.insert(0, str(backend_dir / "src"))
 
 # Now import as usual
 from logging.config import fileConfig  # noqa: E402
+
+from pythia.core.config import settings  # noqa: E402
+from pythia.infrastructure.persistence.models import Base  # noqa: E402
 from sqlalchemy import engine_from_config, pool  # noqa: E402
+
 from alembic import context  # noqa: E402
-from app.db.models import Base  # noqa: E402
-from app.core.config import settings  # noqa: E402
 
 # Alembic Config object
 config = context.config
@@ -52,10 +55,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

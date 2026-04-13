@@ -3,9 +3,11 @@
 Exposes /api/v1/health for container orchestrators (Docker, K8s)
 and monitoring systems (Prometheus, Traefik).
 """
-import time
+
 import logging
+import time
 from datetime import datetime
+
 from fastapi import APIRouter
 
 logger = logging.getLogger(__name__)
@@ -32,6 +34,7 @@ async def health_check() -> dict:
     # Probe Redis connectivity
     try:
         import redis
+
         r = redis.Redis.from_url("redis://localhost:6379/0", socket_timeout=2)
         r.ping()
         services["redis"] = "healthy"
@@ -40,13 +43,18 @@ async def health_check() -> dict:
 
     # Probe Prometheus exporter
     try:
-        from pythia.infrastructure.monitoring.prometheus_exporter import get_metrics_exporter
+        from pythia.infrastructure.monitoring.prometheus_exporter import (
+            get_metrics_exporter,
+        )
+
         exporter = get_metrics_exporter()
         services["prometheus"] = "healthy" if exporter.server_started else "not_started"
     except Exception:
         services["prometheus"] = "unavailable"
 
-    overall = "healthy" if all(v == "healthy" for v in services.values()) else "degraded"
+    overall = (
+        "healthy" if all(v == "healthy" for v in services.values()) else "degraded"
+    )
 
     return {
         "status": overall,

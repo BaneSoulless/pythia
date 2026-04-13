@@ -3,9 +3,13 @@ Tests for stop-loss and take-profit automation.
 
 Tests trigger conditions, position management, and automated order execution.
 """
+
 import pytest
-from pythia.application.stop_loss_manager import StopLossTakeProfitManager as StopLossManager
+from pythia.application.stop_loss_manager import (
+    StopLossTakeProfitManager as StopLossManager,
+)
 from pythia.infrastructure.persistence.models import Portfolio, Position, User
+
 
 class TestStopLossTakeProfit:
     """Test suite for stop-loss and take-profit functionality."""
@@ -18,13 +22,23 @@ class TestStopLossTakeProfit:
     @pytest.fixture
     def portfolio_with_position(self, db_session):
         """Create portfolio with a position."""
-        user = User(email='test@example.com', username='testuser', hashed_password='hash')
+        user = User(
+            email="test@example.com", username="testuser", hashed_password="hash"
+        )
         db_session.add(user)
         db_session.commit()
         portfolio = Portfolio(user_id=user.id, balance=10000.0, total_value=11500.0)
         db_session.add(portfolio)
         db_session.flush()
-        position = Position(portfolio_id=portfolio.id, symbol='AAPL', quantity=10, average_price=150.0, current_price=150.0, stop_loss_price=147.0, take_profit_price=157.5)
+        position = Position(
+            portfolio_id=portfolio.id,
+            symbol="AAPL",
+            quantity=10,
+            average_price=150.0,
+            current_price=150.0,
+            stop_loss_price=147.0,
+            take_profit_price=157.5,
+        )
         db_session.add(position)
         db_session.commit()
         return (portfolio, position)
@@ -36,7 +50,7 @@ class TestStopLossTakeProfit:
         db_session.commit()
         manager.check_all_positions()
         db_session.refresh(position)
-        assert position.quantity == 0 or position.status == 'closed'
+        assert position.quantity == 0 or position.status == "closed"
 
     def test_take_profit_trigger(self, manager, portfolio_with_position, db_session):
         """Test take-profit triggers when price rises."""
@@ -45,7 +59,7 @@ class TestStopLossTakeProfit:
         db_session.commit()
         manager.check_all_positions()
         db_session.refresh(position)
-        assert position.quantity == 0 or position.status == 'closed'
+        assert position.quantity == 0 or position.status == "closed"
 
     def test_trailing_stop_loss(self, manager, portfolio_with_position, db_session):
         """Test trailing stop-loss adjusts with price."""
@@ -57,7 +71,9 @@ class TestStopLossTakeProfit:
         db_session.refresh(position)
         assert position.stop_loss_price > 147.0
 
-    def test_no_trigger_within_range(self, manager, portfolio_with_position, db_session):
+    def test_no_trigger_within_range(
+        self, manager, portfolio_with_position, db_session
+    ):
         """Test no trigger when price within range."""
         portfolio, position = portfolio_with_position
         position.current_price = 152.0
@@ -67,10 +83,14 @@ class TestStopLossTakeProfit:
         db_session.refresh(position)
         assert position.quantity == original_quantity
 
-    def test_set_stop_loss_take_profit(self, manager, portfolio_with_position, db_session):
+    def test_set_stop_loss_take_profit(
+        self, manager, portfolio_with_position, db_session
+    ):
         """Test setting SL/TP on position."""
         portfolio, position = portfolio_with_position
-        manager.set_stop_loss_take_profit(position_id=position.id, stop_loss_pct=0.03, take_profit_pct=0.1)
+        manager.set_stop_loss_take_profit(
+            position_id=position.id, stop_loss_pct=0.03, take_profit_pct=0.1
+        )
         db_session.refresh(position)
         assert position.stop_loss_price == pytest.approx(145.5, rel=0.01)
         assert position.take_profit_price == pytest.approx(165.0, rel=0.01)
@@ -78,5 +98,7 @@ class TestStopLossTakeProfit:
     def test_risk_reward_calculation(self, manager, portfolio_with_position):
         """Test risk/reward ratio calculation."""
         portfolio, position = portfolio_with_position
-        risk_reward = manager.calculate_risk_reward(entry_price=150.0, stop_loss_price=147.0, take_profit_price=157.5)
+        risk_reward = manager.calculate_risk_reward(
+            entry_price=150.0, stop_loss_price=147.0, take_profit_price=157.5
+        )
         assert risk_reward == pytest.approx(2.5, rel=0.01)

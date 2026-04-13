@@ -1,8 +1,9 @@
 import asyncio
 import functools
-from typing import Callable
+from collections.abc import Callable
 
-def simple_circuit_breaker(max_retries: int=3, backoff_base: float=2.0):
+
+def simple_circuit_breaker(max_retries: int = 3, backoff_base: float = 2.0):
     """Exponential backoff retry decorator for test mode."""
 
     def decorator(func: Callable):
@@ -15,8 +16,10 @@ def simple_circuit_breaker(max_retries: int=3, backoff_base: float=2.0):
                 except Exception:
                     if attempt == max_retries - 1:
                         raise
-                    wait = backoff_base ** attempt
+                    wait = backoff_base**attempt
                     await asyncio.sleep(wait)
-            raise RuntimeError(f'Max retries ({max_retries}) exceeded')
+            raise RuntimeError(f"Max retries ({max_retries}) exceeded")
+
         return wrapper
+
     return decorator

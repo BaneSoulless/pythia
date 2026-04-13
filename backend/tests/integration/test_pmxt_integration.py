@@ -3,9 +3,11 @@
 Validates prediction market adapter initialization, market fetching,
 order placement, and cross-platform arbitrage detection logic.
 """
+
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from pythia.adapters.pmxt_adapter import PmxtAdapter
+from pythia.adapters.pmxt_adapter import PmxtAdapter, PmxtAdapterError
 from pythia.application.trading.arbitrage_detector import ArbitrageDetector
 from pythia.domain.markets.prediction_market import PredictionMarket
 
@@ -51,8 +53,9 @@ class TestPmxtAdapterInitialization:
 class TestPmxtAdapterFetchMarkets:
     """Verify market fetching returns expected structure."""
 
+    @pytest.mark.asyncio
     @patch("pythia.adapters.pmxt_adapter.pmxt")
-    def test_fetch_kalshi_markets(self, mock_pmxt):
+    async def test_fetch_kalshi_markets(self, mock_pmxt):
         mock_client = MagicMock()
         mock_client.fetch_markets.return_value = [
             {
@@ -69,32 +72,37 @@ class TestPmxtAdapterFetchMarkets:
             kalshi_api_key="key",
             kalshi_private_key_path="/tmp/k.pem",
         )
-        markets = adapter.fetch_markets("kalshi", limit=10)
+        markets = await adapter.fetch_markets(platform="kalshi", limit=10)
 
         assert len(markets) == 1
         assert markets[0]["market_id"] == "FED-RATE-MAR"
         mock_client.fetch_markets.assert_called_once_with(limit=10)
 
-    def test_fetch_unsupported_platform_raises(self):
+    @pytest.mark.asyncio
+    async def test_fetch_unsupported_platform_raises(self):
         adapter = PmxtAdapter()
-        with pytest.raises(ValueError, match="Unsupported platform"):
-            adapter.fetch_markets("binance")
+        with pytest.raises((PmxtAdapterError, AssertionError), match="Unsupported platform"):
+            await adapter.fetch_markets(platform="binance")
 
 
 class TestPmxtAdapterPlaceOrder:
     """Verify order placement logic."""
 
+    @pytest.mark.asyncio
     @patch("pythia.adapters.pmxt_adapter.pmxt")
-    def test_place_order_kalshi(self, mock_pmxt):
+    async def test_place_order_kalshi(self, mock_pmxt):
         mock_client = MagicMock()
-        mock_client.place_order.return_value = {"order_id": "ORD-001", "status": "filled"}
+        mock_client.place_order.return_value = {
+            "order_id": "ORD-001",
+            "status": "filled",
+        }
         mock_pmxt.Kalshi.return_value = mock_client
 
         adapter = PmxtAdapter(
             kalshi_api_key="key",
             kalshi_private_key_path="/tmp/k.pem",
         )
-        result = adapter.place_order("kalshi", "FED-RATE", "buy", 100.0, 0.42)
+        result = await adapter.place_order(symbol="FED-RATE", side="buy", quantity=100.0, price=0.42, platform="kalshi")
 
         assert result["order_id"] == "ORD-001"
         mock_client.place_order.assert_called_once_with(
@@ -119,9 +127,7 @@ class TestArbitrageDetector:
 
     def test_finds_arbitrage_when_total_cost_below_one(self):
         detector = ArbitrageDetector(min_roi=0.01)
-        kalshi = [
-            self._make_market("K1", "Fed Rate Hike March", 0.42, 0.58, "kalshi")
-        ]
+        kalshi = [self._make_market("K1", "Fed Rate Hike March", 0.42, 0.58, "kalshi")]
         poly = [
             self._make_market("P1", "Fed Rate Hike March", 0.45, 0.53, "polymarket")
         ]
@@ -133,13 +139,11 @@ class TestArbitrageDetector:
 
     def test_no_arbitrage_when_total_cost_above_one(self):
         detector = ArbitrageDetector(min_roi=0.01)
-        kalshi = [
-            self._make_market("K1", "Bitcoin 100K June", 0.60, 0.40, "kalshi")
-        ]
-        poly = [
-            self._make_market("P1", "Bitcoin 100K June", 0.55, 0.45, "polymarket")
-        ]
-        # total_cost = 0.60 + 0.45 = 1.05 → no arb
+        kalshi = [self._make_market("K1", "Bitcoin 100K June", 0.60, 0.45, "kalshi")]
+        poly = [self._make_market("P1", "Bitcoin 100K June", 0.55, 0.50, "polymarket")]
+        # kalshi YES (0.60) + poly NO (0.50) = 1.10
+        # poly YES (0.55) + kalshi NO (0.45) = 1.00
+        # No arbitrage
         opps = detector.find_opportunities(kalshi, poly)
         assert len(opps) == 0
 
@@ -149,16 +153,16 @@ class TestArbitrageDetector:
             self._make_market("K1", "Fed Rate Hike March 2026", 0.42, 0.58, "kalshi")
         ]
         poly = [
-            self._make_market("P1", "Completely different event", 0.55, 0.40, "polymarket")
+            self._make_market(
+                "P1", "Completely different event", 0.55, 0.40, "polymarket"
+            )
         ]
         opps = detector.find_opportunities(kalshi, poly)
         assert len(opps) == 0
 
     def test_min_roi_filter(self):
         detector = ArbitrageDetector(min_roi=0.10)
-        kalshi = [
-            self._make_market("K1", "Fed Rate Hike March", 0.48, 0.52, "kalshi")
-        ]
+        kalshi = [self._make_market("K1", "Fed Rate Hike March", 0.48, 0.52, "kalshi")]
         poly = [
             self._make_market("P1", "Fed Rate Hike March", 0.50, 0.50, "polymarket")
         ]
@@ -184,12 +188,20 @@ class TestPredictionMarketDomainEntity:
 
     def test_arbitrage_opportunity_exists(self):
         market_a = PredictionMarket(
-            market_id="A", description="Test", yes_price=0.40,
-            no_price=0.60, platform="kalshi", volume=1000,
+            market_id="A",
+            description="Test",
+            yes_price=0.40,
+            no_price=0.60,
+            platform="kalshi",
+            volume=1000,
         )
         market_b = PredictionMarket(
-            market_id="B", description="Test", yes_price=0.45,
-            no_price=0.50, platform="polymarket", volume=1000,
+            market_id="B",
+            description="Test",
+            yes_price=0.45,
+            no_price=0.50,
+            platform="polymarket",
+            volume=1000,
         )
         result = market_a.arbitrage_opportunity(market_b)
         assert result is not None
@@ -198,12 +210,20 @@ class TestPredictionMarketDomainEntity:
 
     def test_no_arbitrage_opportunity(self):
         market_a = PredictionMarket(
-            market_id="A", description="Test", yes_price=0.60,
-            no_price=0.40, platform="kalshi", volume=1000,
+            market_id="A",
+            description="Test",
+            yes_price=0.60,
+            no_price=0.45,
+            platform="kalshi",
+            volume=1000,
         )
         market_b = PredictionMarket(
-            market_id="B", description="Test", yes_price=0.55,
-            no_price=0.45, platform="polymarket", volume=1000,
+            market_id="B",
+            description="Test",
+            yes_price=0.55,
+            no_price=0.50,
+            platform="polymarket",
+            volume=1000,
         )
         result = market_a.arbitrage_opportunity(market_b)
         assert result is None

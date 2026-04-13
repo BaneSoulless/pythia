@@ -101,3 +101,8 @@ backend/.pytest_cache/
 ANTIGRAVITY_REPORT_*.md
 artifacts/
 
+
+backend_logs.txt
+logs*.txt
+test_errors*.txt
+

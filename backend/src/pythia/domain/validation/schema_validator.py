@@ -1,15 +1,16 @@
-import yaml
-from jsonschema import validate, ValidationError
-from pathlib import Path
-from typing import Optional
 import logging
+from pathlib import Path
+
+import yaml
+from jsonschema import ValidationError, validate
 
 logger = logging.getLogger("PYTHIA-VALIDATOR")
+
 
 class SchemaValidator:
     """Zero-hallucination validation via YAML schemas."""
 
-    def __init__(self, schema_dir: Optional[Path] = None):
+    def __init__(self, schema_dir: Path | None = None):
         if schema_dir is None:
             # Default to relative path from this file
             schema_dir = Path(__file__).parent.parent / "schemas"
@@ -45,11 +46,13 @@ class SchemaValidator:
 
         schema = schema_set.get(key)
         if not schema:
-            logger.warning(f"Key {key} not found in {schema_file}. Skipping validation.")
+            logger.warning(
+                f"Key {key} not found in {schema_file}. Skipping validation."
+            )
             return
 
         try:
             validate(instance=data, schema=schema)
         except ValidationError as e:
             logger.error(f"Validation Error [{key}]: {e.message}")
-            raise ValueError(f"Invalid data structure: {e.message}")
+            raise ValueError(f"Invalid data structure: {e.message}") from e

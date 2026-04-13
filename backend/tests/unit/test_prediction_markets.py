@@ -1,6 +1,7 @@
 import pytest
 from pythia.domain.markets.prediction_market import PredictionMarket
 
+
 def test_arbitrage_detection():
     kalshi = PredictionMarket(
         market_id="FED-MAR-T5.25",
@@ -8,7 +9,7 @@ def test_arbitrage_detection():
         yes_price=0.42,
         no_price=0.58,
         platform="kalshi",
-        volume=50000
+        volume=50000,
     )
 
     polymarket = PredictionMarket(
@@ -17,15 +18,16 @@ def test_arbitrage_detection():
         yes_price=0.46,
         no_price=0.56,
         platform="polymarket",
-        volume=120000
+        volume=120000,
     )
 
     arb = kalshi.arbitrage_opportunity(polymarket)
 
     assert arb is not None
     assert arb["cost"] == 0.98
-    assert arb["profit"] == 0.02
+    assert arb["profit"] == pytest.approx(0.02)
     assert arb["roi"] == pytest.approx(0.0204, rel=0.01)
+
 
 def test_no_arbitrage_when_overpriced():
     m1 = PredictionMarket("T1", "Test", 0.60, 0.45, "kalshi", 1000)

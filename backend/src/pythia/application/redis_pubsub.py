@@ -5,21 +5,26 @@ SOTA 2026 Scalability
 Enables fan-out of real-time messages across multiple backend instances.
 """
 
-import redis.asyncio as redis
+import asyncio
 import json
 import logging
-import asyncio
-from typing import Callable, Any
+from collections.abc import Callable
+from typing import Any
+
+import redis.asyncio as redis
+
 from pythia.core.config import settings
 
 logger = logging.getLogger(__name__)
+
 
 class RedisPubSubManager:
     """
     Manages Redis Pub/Sub channels for distributed broadcasting.
     """
+
     def __init__(self):
-        self.redis_url = f"redis://{getattr(settings, 'REDIS_HOST', 'localhost')}:{getattr(settings, 'REDIS_PORT', 6379)}"
+        self.redis_url = f"redis://{getattr(settings, 'REDIS_HOST', 'localhost')}:{getattr(settings, 'REDIS_PORT', 6379)}"  # noqa: E501
         self.pub_conn = None
         self.sub_conn = None
         self.enabled = False
@@ -32,7 +37,9 @@ class RedisPubSubManager:
             self.enabled = True
             logger.info("Redis Pub/Sub connected.")
         except Exception as e:
-            logger.warning(f"Redis Pub/Sub connection failed: {e}. Distributed fan-out disabled.")
+            logger.warning(
+                f"Redis Pub/Sub connection failed: {e}. Distributed fan-out disabled."
+            )
             self.enabled = False
 
     async def publish(self, channel: str, message: Any):
@@ -55,12 +62,13 @@ class RedisPubSubManager:
         async def listener():
             try:
                 async for message in pubsub.listen():
-                    if message['type'] == 'message':
-                        await callback(message['data'])
+                    if message["type"] == "message":
+                        await callback(message["data"])
             except Exception as e:
                 logger.error(f"Redis listener error: {e}")
 
         # Run listener in background task
         asyncio.create_task(listener())
+
 
 redis_pubsub = RedisPubSubManager()

@@ -5,34 +5,44 @@ SOTA 2026 Architectural Standard
 Separates Command (Write) and Query (Read) responsibilities.
 """
 
-from typing import Generic, TypeVar, Any
 from abc import ABC, abstractmethod
+from typing import Any, Generic, TypeVar
 
 TResult = TypeVar("TResult")
+TCommand = TypeVar("TCommand", bound="Command")
+TQuery = TypeVar("TQuery", bound="Query")
 
-class Command(ABC):
+
+class Command(ABC):  # noqa: B024
     """Base class for all commands (Write operations)."""
+
     pass
+
 
 class Query(Generic[TResult], ABC):
     """Base class for all queries (Read operations)."""
+
     pass
 
-class CommandHandler(Generic[Command], ABC):
+
+class CommandHandler(Generic[TCommand], ABC):
     @abstractmethod
     async def handle(self, command: Command) -> Any:
         pass
 
-class QueryHandler(Generic[Query, TResult], ABC):
+
+class QueryHandler(Generic[TQuery, TResult], ABC):
     @abstractmethod
     async def handle(self, query: Query) -> TResult:
         pass
+
 
 class Mediator:
     """
     Central mediator to route commands and queries to their handlers.
     (Simplified implementation)
     """
+
     def __init__(self):
         self._command_handlers = {}
         self._query_handlers = {}

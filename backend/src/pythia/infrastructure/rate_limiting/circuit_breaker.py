@@ -1,16 +1,20 @@
-from enum import Enum
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
+from enum import Enum
 
 logger = logging.getLogger(__name__)
+
 
 class CircuitState(Enum):
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
 
+
 class CircuitBreaker:
-    def __init__(self, failure_threshold: int = 5, timeout: timedelta = timedelta(seconds=60)):
+    def __init__(
+        self, failure_threshold: int = 5, timeout: timedelta = timedelta(seconds=60)
+    ):
         self.failure_threshold = failure_threshold
         self.timeout = timeout
         self.state = CircuitState.CLOSED

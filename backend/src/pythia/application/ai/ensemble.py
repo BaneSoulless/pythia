@@ -3,18 +3,22 @@ AI Model Ensemble - Multiple Models Voting
 
 Enables multiple AI models to vote on trading decisions
 """
+
 import logging
+
 import numpy as np
-from typing import List, Dict, Tuple
+
 from pythia.application.ai.reinforcement_learning import TradingRLAgent
+
 logger = logging.getLogger(__name__)
+
 
 class AIModelEnsemble:
     """
     Ensemble of multiple AI models that vote on decisions
     """
 
-    def __init__(self, models: List[TradingRLAgent], voting_strategy: str='majority'):
+    def __init__(self, models: list[TradingRLAgent], voting_strategy: str = "majority"):
         """
         Initialize ensemble
 
@@ -26,7 +30,7 @@ class AIModelEnsemble:
         self.voting_strategy = voting_strategy
         self.model_weights = [1.0 / len(models)] * len(models)
 
-    def predict(self, state: np.ndarray, training: bool=False) -> Tuple[int, float]:
+    def predict(self, state: np.ndarray, training: bool = False) -> tuple[int, float]:
         """
         Get ensemble prediction
 
@@ -39,19 +43,21 @@ class AIModelEnsemble:
             action, confidence = model.act(state, training=training)
             predictions.append(action)
             confidences.append(confidence)
-        if self.voting_strategy == 'majority':
+        if self.voting_strategy == "majority":
             return self._majority_vote(predictions, confidences)
-        elif self.voting_strategy == 'unanimous':
+        elif self.voting_strategy == "unanimous":
             return self._unanimous_vote(predictions, confidences)
-        elif self.voting_strategy == 'weighted':
+        elif self.voting_strategy == "weighted":
             return self._weighted_vote(predictions, confidences)
         else:
             return self._majority_vote(predictions, confidences)
 
-    def _majority_vote(self, predictions: List[int], confidences: List[float]) -> Tuple[int, float]:
+    def _majority_vote(
+        self, predictions: list[int], confidences: list[float]
+    ) -> tuple[int, float]:
         """Majority voting"""
         votes = {}
-        for pred, conf in zip(predictions, confidences):
+        for pred, conf in zip(predictions, confidences, strict=False):
             if pred not in votes:
                 votes[pred] = []
             votes[pred].append(conf)
@@ -65,20 +71,26 @@ class AIModelEnsemble:
                 avg_confidence = np.mean(confs)
         agreement_factor = max_votes / len(predictions)
         final_confidence = avg_confidence * agreement_factor
-        logger.debug(f'Majority vote: action={best_action}, conf={final_confidence:.2f}, agreement={agreement_factor:.2f}')
+        logger.debug(
+            f"Majority vote: action={best_action}, conf={final_confidence:.2f}, agreement={agreement_factor:.2f}"  # noqa: E501
+        )
         return (best_action, final_confidence)
 
-    def _unanimous_vote(self, predictions: List[int], confidences: List[float]) -> Tuple[int, float]:
+    def _unanimous_vote(
+        self, predictions: list[int], confidences: list[float]
+    ) -> tuple[int, float]:
         """Unanimous voting - all models must agree"""
         if len(set(predictions)) == 1:
             return (predictions[0], np.mean(confidences))
         else:
             return (0, 0.0)
 
-    def _weighted_vote(self, predictions: List[int], confidences: List[float]) -> Tuple[int, float]:
+    def _weighted_vote(
+        self, predictions: list[int], confidences: list[float]
+    ) -> tuple[int, float]:
         """Weighted voting based on model performance"""
         weighted_votes = {}
-        for pred, conf, weight in zip(predictions, confidences, self.model_weights):
+        for pred, conf, weight in zip(predictions, confidences, self.model_weights, strict=False):
             if pred not in weighted_votes:
                 weighted_votes[pred] = 0
             weighted_votes[pred] += conf * weight
@@ -86,7 +98,7 @@ class AIModelEnsemble:
         confidence = weighted_votes[best_action]
         return (best_action, confidence)
 
-    def update_weights(self, trade_results: List[float]):
+    def update_weights(self, trade_results: list[float]):
         """
         Update model weights based on performance
 
@@ -96,53 +108,70 @@ class AIModelEnsemble:
         performance = np.array(trade_results)
         exp_perf = np.exp(performance - np.max(performance))
         self.model_weights = exp_perf / np.sum(exp_perf)
-        logger.info(f'Updated model weights: {self.model_weights}')
+        logger.info(f"Updated model weights: {self.model_weights}")
 
     def add_model(self, model: TradingRLAgent):
         """Add a new model to the ensemble"""
         self.models.append(model)
         n = len(self.models)
         self.model_weights = [1.0 / n] * n
-        logger.info(f'Added model to ensemble. Total models: {n}')
+        logger.info(f"Added model to ensemble. Total models: {n}")
 
-    def get_ensemble_metrics(self) -> Dict:
+    def get_ensemble_metrics(self) -> dict:
         """Get ensemble performance metrics"""
-        return {'num_models': len(self.models), 'voting_strategy': self.voting_strategy, 'model_weights': self.model_weights.tolist() if hasattr(self.model_weights, 'tolist') else self.model_weights, 'avg_epsilon': np.mean([m.epsilon for m in self.models])}
+        return {
+            "num_models": len(self.models),
+            "voting_strategy": self.voting_strategy,
+            "model_weights": self.model_weights.tolist()
+            if hasattr(self.model_weights, "tolist")
+            else self.model_weights,
+            "avg_epsilon": np.mean([m.epsilon for m in self.models]),
+        }
+
 
 class MultiAPIManager:
     """
     Manages multiple API connections with failover
     """
 
-    def __init__(self, apis: List[Dict]):
+    def __init__(self, apis: list[dict]):
         """
         Initialize with list of API configurations
 
         Args:
             apis: List of dicts with 'name', 'client', 'priority'
         """
-        self.apis = sorted(apis, key=lambda x: x.get('priority', 999))
+        self.apis = sorted(apis, key=lambda x: x.get("priority", 999))
         self.current_api_index = 0
-        self.failure_counts = {api['name']: 0 for api in apis}
+        self.failure_counts = {api["name"]: 0 for api in apis}
 
-    def get_quote(self, symbol: str) -> Dict:
+    def get_quote(self, symbol: str) -> dict:
         """
         Get quote with automatic failover
         """
         for attempt, api in enumerate(self.apis):
             try:
-                result = api['client'].get_quote(symbol)
-                self.failure_counts[api['name']] = 0
+                result = api["client"].get_quote(symbol)
+                self.failure_counts[api["name"]] = 0
                 logger.info(f"Got quote from {api['name']}")
                 return result
             except Exception as e:
-                self.failure_counts[api['name']] += 1
+                self.failure_counts[api["name"]] += 1
                 logger.warning(f"API {api['name']} failed: {e}")
                 if attempt == len(self.apis) - 1:
-                    raise Exception(f'All APIs failed to fetch quote for {symbol}')
+                    raise Exception(f"All APIs failed to fetch quote for {symbol}") from e
                 continue
-        raise Exception('No APIs available')
+        raise Exception("No APIs available")
 
-    def get_api_status(self) -> Dict:
+    def get_api_status(self) -> dict:
         """Get status of all APIs"""
-        return {'apis': [{'name': api['name'], 'priority': api.get('priority', 999), 'failures': self.failure_counts[api['name']]} for api in self.apis]}
+        return {
+            "apis": [
+                {
+                    "name": api["name"],
+                    "priority": api.get("priority", 999),
+                    "failures": self.failure_counts[api["name"]],
+                }
+                for api in self.apis
+            ]
+        }

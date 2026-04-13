@@ -11,15 +11,17 @@ Logic:
 3. If cached, return stored response immediately (no re-execution).
 4. If not cached, execute request and cache the response.
 """
-from typing import Optional, Dict, Any
+
 import logging
 import time
+from typing import Any
+
 logger = logging.getLogger(__name__)
-_memory_cache: Dict[str, Dict[str, Any]] = {}
+_memory_cache: dict[str, dict[str, Any]] = {}
+
 
 class IdempotencyLayer:
-
-    def __init__(self, ttl_seconds: int=86400):
+    def __init__(self, ttl_seconds: int = 86400):
         self.ttl = ttl_seconds
 
     async def process(self, key: str, operation_func, *args, **kwargs):
@@ -34,20 +36,20 @@ class IdempotencyLayer:
             return await operation_func(*args, **kwargs)
         cached = self._get_from_cache(key)
         if cached:
-            logger.info(f'Idempotency Hit: Returning cached result for {key}')
-            return cached['result']
+            logger.info(f"Idempotency Hit: Returning cached result for {key}")
+            return cached["result"]
         result = await operation_func(*args, **kwargs)
         self._set_to_cache(key, result)
         return result
 
-    def _get_from_cache(self, key: str) -> Optional[Dict]:
+    def _get_from_cache(self, key: str) -> dict | None:
         entry = _memory_cache.get(key)
         if not entry:
             return None
-        if time.time() > entry['expiry']:
+        if time.time() > entry["expiry"]:
             del _memory_cache[key]
             return None
         return entry
 
     def _set_to_cache(self, key: str, result: Any):
-        _memory_cache[key] = {'result': result, 'expiry': time.time() + self.ttl}
+        _memory_cache[key] = {"result": result, "expiry": time.time() + self.ttl}

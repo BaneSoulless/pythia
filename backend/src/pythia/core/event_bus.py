@@ -9,24 +9,30 @@ Edge cases handled:
 2. Unregistered event types -> Dropped safely.
 3. Handler errors -> Caught and sent to error_handlers without crashing the subscriber.
 """
+
 # Step-1: Imports and Abstractions
 import asyncio
 import json
 import logging
 import os
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable, Dict, List, Any, Optional
+from typing import Any
 
 import redis.asyncio as redis
+
 from pythia.domain.events.domain_events import DomainEvent
 
 logger = logging.getLogger("PYTHIA-EVENTBUS")
 
 EventHandler = Callable[[Any], Any]
 
+
 class EventBusError(Exception):
     """Custom exception for EventBus failures."""
+
     pass
+
 
 class RedisEventBus:
     """Distributed Async Event Bus powering Pythia v4.0.
@@ -42,29 +48,31 @@ class RedisEventBus:
         await bus.publish(TradeExecutedEvent(symbol="BTC"))
     """
 
-    def __init__(self, redis_url: Optional[str] = None):
+    def __init__(self, redis_url: str | None = None):
         # Step-2: Initialize with Pre-conditions
         self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/3")
         assert self.redis_url.startswith("redis"), "Invalid Redis URL scheme"
 
         self.channel_name = "pythia_domain_events"
-        self._handlers: Dict[str, List[EventHandler]] = {}
-        self._error_handlers: List[Callable[[dict, Exception], Any]] = []
+        self._handlers: dict[str, list[EventHandler]] = {}
+        self._error_handlers: list[Callable[[dict, Exception], Any]] = []
 
-        self.redis: Optional[redis.Redis] = None
-        self.pubsub: Optional[redis.client.PubSub] = None
+        self.redis: redis.Redis | None = None
+        self.pubsub: redis.client.PubSub | None = None
         self._running: bool = False
-        self._listener_task: Optional[asyncio.Task] = None
+        self._listener_task: asyncio.Task | None = None
 
     def subscribe(self, event_name: str) -> Callable[[EventHandler], EventHandler]:
         """Decorator for subscribing to specific DomainEvents by class name."""
         assert event_name, "Event name cannot be empty"
+
         def decorator(handler: EventHandler) -> EventHandler:
             if event_name not in self._handlers:
                 self._handlers[event_name] = []
             self._handlers[event_name].append(handler)
             logger.debug(f"Subscribed handler to {event_name}")
             return handler
+
         return decorator
 
     def on_error(self, handler: Callable[[dict, Exception], Any]) -> None:
@@ -85,7 +93,7 @@ class RedisEventBus:
             self._listener_task = asyncio.create_task(self._listen())
             logger.info(f"✅ RedisEventBus connected to {self.redis_url}")
         except Exception as e:
-            raise EventBusError(f"Failed to start RedisEventBus: {e}")
+            raise EventBusError(f"Failed to start RedisEventBus: {e}") from e
 
     async def stop(self) -> None:
         """Gracefully disconnect and drain."""
@@ -107,30 +115,36 @@ class RedisEventBus:
         payload = {
             "__type__": event_obj.__class__.__name__,
             "data": {
-                k: getattr(event_obj, k).isoformat() if isinstance(getattr(event_obj, k), datetime) else getattr(event_obj, k)
+                k: getattr(event_obj, k).isoformat()
+                if isinstance(getattr(event_obj, k), datetime)
+                else getattr(event_obj, k)
                 for k in event_obj.__dataclass_fields__
-            }
+            },
         }
 
         json_str = json.dumps(payload)
         if not self.redis:
-            raise EventBusError("Redis connection is not initialized. Call start() first.")
+            raise EventBusError(
+                "Redis connection is not initialized. Call start() first."
+            )
 
         try:
             receivers = await self.redis.publish(self.channel_name, json_str)
             logger.debug(f"Published {payload['__type__']} to {receivers} receivers")
         except Exception as e:
-            raise EventBusError(f"Publish failed: {e}")
+            raise EventBusError(f"Publish failed: {e}") from e
 
     async def _listen(self) -> None:
         """Background task reading from Redis PubSub."""
         while self._running:
             try:
                 # get_message fetches synchronously if available, otherwise waits
-                message = await self.pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                if message and message['type'] == 'message':
+                message = await self.pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=1.0
+                )
+                if message and message["type"] == "message":
                     # Step-5: Deserialization and Routing
-                    payload = json.loads(message['data'])
+                    payload = json.loads(message["data"])
                     event_type = payload.get("__type__")
                     event_data = payload.get("data", {})
 
@@ -140,13 +154,15 @@ class RedisEventBus:
                     # Dispatch
                     handlers = self._handlers.get(event_type, [])
                     for h in handlers:
-                        asyncio.create_task(self._safe_invoke(h, event_type, event_data))
+                        asyncio.create_task(
+                            self._safe_invoke(h, event_type, event_data)
+                        )
 
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"EventBus listener error: {e}")
-                await asyncio.sleep(1.0) # Exponential backoff locally in production
+                await asyncio.sleep(1.0)  # Exponential backoff locally in production
 
     async def _safe_invoke(self, handler: EventHandler, event_type: str, data: dict):
         """Invoke a handler catching all errors."""
@@ -163,11 +179,13 @@ class RedisEventBus:
                         await err_h(data, e)
                     else:
                         err_h(data, e)
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
+
 # Singleton accessor
-_event_bus: Optional[RedisEventBus] = None
+_event_bus: RedisEventBus | None = None
+
 
 def get_event_bus() -> RedisEventBus:
     global _event_bus

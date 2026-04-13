@@ -5,6 +5,7 @@ from pathlib import Path
 # Set PYTHONPATH to include the source directory
 os.environ["PYTHONPATH"] = str(Path("backend/src").absolute())
 
+
 def check_file_structure():
     print("\n📁 VERIFYING FILE STRUCTURE...")
     critical_files = [
@@ -16,7 +17,7 @@ def check_file_structure():
         "backend/src/pythia/infrastructure/monitoring/prometheus_exporter.py",
         "docker-compose.prod.yml",
         "k8s/pythia-deployment.yaml",
-        "docs/adr/0001-prediction-markets-integration.md"
+        "docs/adr/0001-prediction-markets-integration.md",
     ]
 
     missing = []
@@ -28,10 +29,13 @@ def check_file_structure():
             missing.append(f)
     return len(missing) == 0
 
+
 def check_git_status():
     print("\n📦 VERIFYING GIT STATUS...")
     try:
-        result = subprocess.run(["git", "status", "--short"], capture_output=True, text=True)
+        result = subprocess.run(
+            ["git", "status", "--short"], capture_output=True, text=True  # noqa: S607
+        )
         uncommitted = result.stdout.strip()
         if uncommitted:
             print(f"  ⚠️ Working directory dirty:\n{uncommitted}")
@@ -41,6 +45,7 @@ def check_git_status():
     except Exception as e:
         print(f"  ❌ Git check failed: {e}")
         return False
+
 
 def check_logic():
     print("\n🧪 VERIFYING DOMAIN LOGIC...")
@@ -67,6 +72,7 @@ def check_logic():
         print(f"  ❌ Logic check failed: {e}")
         return False
 
+
 def run_health_check():
     print("=" * 60)
     print("🚀 PYTHIA MULTI-ASSET READINESS REPORT")
@@ -82,6 +88,7 @@ def run_health_check():
     else:
         print("🔴 SYSTEM COMPONENT FAILURE DETECTED")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     run_health_check()

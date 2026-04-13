@@ -3,8 +3,10 @@
 Defines the Celery app, task autodiscovery, and beat schedule.
 Broker: Redis 7.x. Result backend: Redis.
 """
-import os
+
 import logging
+import os
+
 from celery import Celery
 
 logger = logging.getLogger(__name__)

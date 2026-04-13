@@ -1,0 +1,65 @@
+# Build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Git
+.git/
+.gitignore
+
+# CI/CD
+.github/
+
+# Documentation
+docs/
+*.md
+LICENSE
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+test.db
+
+# Secrets (never copy into image)
+secrets/
+.env
+.env.*
+
+# Frontend (built separately)
+frontend/
+
+# Monitoring configs (mounted as volumes)
+monitoring/
+
+# Docker files
+Dockerfile
+docker-compose*.yml
+
+# Misc
+*.log
+*.bak
+*.tmp
+data/
+logs/

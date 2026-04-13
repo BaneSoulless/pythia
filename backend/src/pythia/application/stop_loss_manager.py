@@ -1,63 +1,100 @@
 """
-Stop-Loss and Take-Profit Manager
-
-P0-3 FIX: Atomic transaction handling with row-level locking.
+Stop-Loss Manager - REFACTORED with Atomic Transaction Safety
+Implements: Full atomicity for position closure, proper rollback handling
 """
+
 import logging
-from typing import Dict, List
-from datetime import datetime
 from contextlib import contextmanager
-from sqlalchemy.orm import Session
+from datetime import datetime
+from decimal import Decimal
+
 from sqlalchemy import select
-from pythia.infrastructure.persistence.models import Trade, Portfolio, Position
+from sqlalchemy.orm import Session
+
+from pythia.core.errors import ErrorCode, TradingError
+from pythia.infrastructure.persistence.models import Portfolio, Position, Trade
+
 logger = logging.getLogger(__name__)
+
 
 @contextmanager
 def atomic_transaction(db: Session):
-    """
-    Context manager for atomic database transactions.
-
-    Automatically commits on success, rolls back on error.
-    """
+    """Context manager for atomic database transactions"""
     try:
         yield db
         db.commit()
     except Exception as e:
         db.rollback()
-        logger.error(f'Transaction rolled back: {e}')
+        logger.error(f"transaction_rollback: {e}", exc_info=True)
         raise
+
 
 class StopLossTakeProfitManager:
     """
-    Manages stop-loss and take-profit orders.
+    Manages stop-loss and take-profit orders with atomic execution.
 
-    P0-3 FIX: All position closes are now atomic with row-level locking.
+    SECURITY FIXES APPLIED:
+    - Atomic position closure (trade record created BEFORE status update)
+    - Proper rollback on failures
+    - Support for short positions in trailing stops
     """
 
-    def __init__(self, db_session: Session, default_stop_loss_pct: float=0.02, default_take_profit_pct: float=0.05, trailing_stop: bool=False):
+    def __init__(
+        self,
+        db_session: Session,
+        default_stop_loss_pct: float = 0.02,
+        default_take_profit_pct: float = 0.05,
+        trailing_stop: bool = False,
+    ):
         self.db = db_session
         self.default_stop_loss_pct = default_stop_loss_pct
         self.default_take_profit_pct = default_take_profit_pct
         self.trailing_stop = trailing_stop
 
-    def check_all_positions(self) -> List[Dict]:
-        """
-        Check all open positions for stop-loss or take-profit triggers
-        """
+    def check_all_positions(self) -> list[dict]:
+        """Check all open positions for stop-loss or take-profit triggers"""
         triggered_orders = []
-        positions = self.db.query(Position).filter(Position.status == 'open').all()
+        positions = self.db.query(Position).filter(Position.status == "open").all()
         for position in positions:
             if not position.current_price:
                 continue
-            if position.stop_loss_price and position.current_price <= position.stop_loss_price:
-                logger.info(f'Stop loss triggered for {position.symbol} at {position.current_price}')
-                self._close_position(position, 'stop_loss')
-                triggered_orders.append({'symbol': position.symbol, 'type': 'stop_loss', 'price': float(position.current_price)})
+            if (
+                position.stop_loss_price
+                and position.current_price <= position.stop_loss_price
+            ):
+                logger.info(
+                    f"Stop loss triggered for {position.symbol} at {position.current_price}"
+                )
+                try:
+                    self._close_position(position, "stop_loss")
+                    triggered_orders.append(
+                        {
+                            "symbol": position.symbol,
+                            "type": "stop_loss",
+                            "price": position.current_price,
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to close position on stop-loss: {e}")
                 continue
-            if position.take_profit_price and position.current_price >= position.take_profit_price:
-                logger.info(f'Take profit triggered for {position.symbol} at {position.current_price}')
-                self._close_position(position, 'take_profit')
-                triggered_orders.append({'symbol': position.symbol, 'type': 'take_profit', 'price': float(position.current_price)})
+            if (
+                position.take_profit_price
+                and position.current_price >= position.take_profit_price
+            ):
+                logger.info(
+                    f"Take profit triggered for {position.symbol} at {position.current_price}"
+                )
+                try:
+                    self._close_position(position, "take_profit")
+                    triggered_orders.append(
+                        {
+                            "symbol": position.symbol,
+                            "type": "take_profit",
+                            "price": position.current_price,
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to close position on take-profit: {e}")
                 continue
             if self.trailing_stop and position.trailing_stop_pct:
                 self._update_trailing_stop(position)
@@ -67,55 +104,146 @@ class StopLossTakeProfitManager:
         """
         Close position with full atomicity.
 
-        P0-3 FIX: Uses row-level locking and creates Trade record.
+        CRITICAL: Trade record is created BEFORE position status update
+        to ensure no orphaned records on failure.
         """
         try:
             with atomic_transaction(self.db):
-                locked_pos = self.db.execute(select(Position).where(Position.id == position.id).with_for_update()).scalar_one()
-                pnl = (locked_pos.current_price - locked_pos.average_price) * locked_pos.quantity
-                trade = Trade(portfolio_id=locked_pos.portfolio_id, symbol=locked_pos.symbol, side='sell', quantity=locked_pos.quantity, price=locked_pos.current_price, pnl=pnl, strategy_used=f'auto_{reason}')
+                locked_position = self.db.execute(
+                    select(Position).where(Position.id == position.id).with_for_update()
+                ).scalar_one()
+                portfolio = self.db.execute(
+                    select(Portfolio)
+                    .where(Portfolio.id == locked_position.portfolio_id)
+                    .with_for_update()
+                ).scalar_one()
+                entry_price = Decimal(str(locked_position.average_price))
+                exit_price = Decimal(str(locked_position.current_price))
+                quantity = Decimal(str(locked_position.quantity))
+                pnl = (exit_price - entry_price) * quantity
+                trade = Trade(
+                    portfolio_id=locked_position.portfolio_id,
+                    symbol=locked_position.symbol,
+                    side="sell",
+                    quantity=float(quantity),
+                    price=float(exit_price),
+                    pnl=float(pnl),
+                )
                 self.db.add(trade)
-                locked_pos.status = 'closed'
-                locked_pos.exit_price = locked_pos.current_price
-                locked_pos.exit_date = datetime.utcnow()
-                locked_pos.exit_reason = reason
-                portfolio = self.db.execute(select(Portfolio).where(Portfolio.id == locked_pos.portfolio_id).with_for_update()).scalar_one()
-                proceeds = locked_pos.quantity * locked_pos.current_price
-                portfolio.balance = portfolio.balance + proceeds
-                logger.info(f'Position {locked_pos.symbol} closed: reason={reason}, pnl={pnl}')
+                self.db.flush()
+                balance = Decimal(str(portfolio.balance))
+                proceeds = quantity * exit_price
+                portfolio.balance = float(balance + proceeds)
+                locked_position.status = "closed"
+                locked_position.exit_price = float(exit_price)
+                locked_position.exit_date = datetime.utcnow()
+                locked_position.exit_reason = reason
+                total_position_value = sum(
+
+                        Decimal(str(p.quantity)) * Decimal(str(p.current_price))
+                        for p in self.db.query(Position)
+                        .filter(
+                            Position.portfolio_id == portfolio.id,
+                            Position.status == "open",
+                            Position.id != locked_position.id,
+                        )
+                        .all()
+
+                )
+                portfolio.total_value = float(
+                    Decimal(str(portfolio.balance)) + total_position_value
+                )
+                logger.info(
+                    "position_closed",
+                    position_id=locked_position.id,
+                    symbol=locked_position.symbol,
+                    reason=reason,
+                    pnl=float(pnl),
+                )
         except Exception as e:
-            logger.error(f'Stop-loss execution failed for {position.symbol}: {e}', exc_info=True)
-            raise
+            logger.error(f"Position closure failed: {e}", exc_info=True)
+            raise TradingError(
+                code=ErrorCode.TRADE_EXECUTION_FAILED,
+                message=f"Failed to close position: {str(e)}",
+            ) from e
 
     def _update_trailing_stop(self, position: Position):
-        """Update trailing stop price"""
+        """
+        Update trailing stop price with support for long and short positions.
+
+        SECURITY FIX: Correctly handles short positions (inverse logic)
+        """
         if not position.trailing_stop_pct:
             return
-        new_stop_loss = position.current_price * (1 - position.trailing_stop_pct)
-        if not position.stop_loss_price or new_stop_loss > position.stop_loss_price:
-            position.stop_loss_price = new_stop_loss
-            self.db.commit()
+        try:
+            is_long = position.quantity > 0
+            current_price = Decimal(str(position.current_price))
+            trailing_pct = Decimal(str(position.trailing_stop_pct))
+            if is_long:
+                new_stop_loss = current_price * (Decimal("1") - trailing_pct)
+                if not position.stop_loss_price:
+                    position.stop_loss_price = float(new_stop_loss)
+                    self.db.commit()
+                elif new_stop_loss > Decimal(str(position.stop_loss_price)):
+                    position.stop_loss_price = float(new_stop_loss)
+                    self.db.commit()
+                    logger.info(
+                        "trailing_stop_updated",
+                        position_id=position.id,
+                        symbol=position.symbol,
+                        new_stop_loss=float(new_stop_loss),
+                    )
+            else:
+                new_stop_loss = current_price * (Decimal("1") + trailing_pct)
+                if not position.stop_loss_price:
+                    position.stop_loss_price = float(new_stop_loss)
+                    self.db.commit()
+                elif new_stop_loss < Decimal(str(position.stop_loss_price)):
+                    position.stop_loss_price = float(new_stop_loss)
+                    self.db.commit()
+                    logger.info(
+                        "trailing_stop_updated",
+                        position_id=position.id,
+                        symbol=position.symbol,
+                        new_stop_loss=float(new_stop_loss),
+                        direction="short",
+                    )
+        except Exception as e:
+            logger.error(f"Trailing stop update failed: {e}")
 
-    def set_stop_loss_take_profit(self, position_id: int, stop_loss_pct: float, take_profit_pct: float):
+    def set_stop_loss_take_profit(
+        self, position_id: int, stop_loss_pct: float, take_profit_pct: float
+    ):
         """Set SL/TP for a position"""
         position = self.db.query(Position).filter(Position.id == position_id).first()
         if not position:
-            raise ValueError(f'Position {position_id} not found')
-        entry_price = position.average_price
-        position.stop_loss_price = entry_price * (1 - stop_loss_pct)
-        position.take_profit_price = entry_price * (1 + take_profit_pct)
+            raise TradingError(
+                code=ErrorCode.POSITION_NOT_FOUND,
+                message=f"Position {position_id} not found",
+            )
+        entry_price = Decimal(str(position.average_price))
+        sl_pct = Decimal(str(stop_loss_pct))
+        tp_pct = Decimal(str(take_profit_pct))
+        position.stop_loss_price = float(entry_price * (Decimal("1") - sl_pct))
+        position.take_profit_price = float(entry_price * (Decimal("1") + tp_pct))
         self.db.commit()
 
-    def calculate_risk_reward(self, entry_price: float, stop_loss_price: float, take_profit_price: float) -> float:
+    def calculate_risk_reward(
+        self, entry_price: float, stop_loss_price: float, take_profit_price: float
+    ) -> float:
         """Calculate risk/reward ratio"""
-        risk = entry_price - stop_loss_price
-        reward = take_profit_price - entry_price
+        entry = Decimal(str(entry_price))
+        stop = Decimal(str(stop_loss_price))
+        target = Decimal(str(take_profit_price))
+        risk = entry - stop
+        reward = target - entry
         if risk <= 0:
             return 0.0
-        return reward / risk
+        return float(reward / risk)
 
     def update_trailing_stops(self):
         """Update all trailing stops"""
-        positions = self.db.query(Position).filter(Position.status == 'open').all()
+        positions = self.db.query(Position).filter(Position.status == "open").all()
         for position in positions:
-            self._update_trailing_stop(position)
+            if position.trailing_stop_pct:
+                self._update_trailing_stop(position)

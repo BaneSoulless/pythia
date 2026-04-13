@@ -2,14 +2,17 @@
 Test Suite for Distributed Event Bus
 Applies Neuro-Symbolic workflow: verifies pub/sub functionality and error isolation.
 """
-import pytest
+
 from unittest.mock import AsyncMock, patch
-from pythia.core.event_bus import RedisEventBus, EventBusError
+
+import pytest
+from pythia.core.event_bus import EventBusError, RedisEventBus
 from pythia.domain.events.domain_events import TradeExecutedEvent
+
 
 @pytest.fixture
 def redis_mock():
-    with patch("pythia.core.event_bus.redis.from_url") as MockRedis:
+    with patch("pythia.core.event_bus.redis.from_url") as MockRedis:  # noqa: N806
         # Construct an async mock that mimics basic pubsub behavior
         mock_instance = AsyncMock()
         mock_pubsub = AsyncMock()
@@ -18,14 +21,17 @@ def redis_mock():
         MockRedis.return_value = mock_instance
         yield MockRedis
 
+
 @pytest.mark.asyncio
 async def test_event_bus_initialization_assertions():
     """Test Pre-condition: cannot subscribe without event name."""
     bus = RedisEventBus()
     with pytest.raises(AssertionError, match="Event name cannot be empty"):
+
         @bus.subscribe("")
         def my_bad_handler(data):
             pass
+
 
 @pytest.mark.asyncio
 async def test_event_bus_publish_without_start(redis_mock):
@@ -33,6 +39,7 @@ async def test_event_bus_publish_without_start(redis_mock):
     bus = RedisEventBus("redis://dummy")
     with pytest.raises(EventBusError, match="not initialized"):
         await bus.publish(TradeExecutedEvent(symbol="BTC"))
+
 
 @pytest.mark.asyncio
 async def test_event_bus_safe_invoke():
@@ -44,6 +51,7 @@ async def test_event_bus_safe_invoke():
         raise ValueError("Simulated crash")
 
     error_caught = False
+
     def on_err(data, exc):
         nonlocal error_caught
         error_caught = True
@@ -52,7 +60,7 @@ async def test_event_bus_safe_invoke():
     bus.on_error(on_err)
 
     # Manually trigger safe_invoke as if message arrived
-    await bus._safe_invoke(crashing_handler, "TradeExecutedEvent", {"symbol":"BTC"})
+    await bus._safe_invoke(crashing_handler, "TradeExecutedEvent", {"symbol": "BTC"})
 
     # Ensures the error handler was called and no throw escaped _safe_invoke
     assert error_caught is True

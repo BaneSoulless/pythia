@@ -9,10 +9,10 @@ Edge Cases:
 - Network dimensions dynamically adapt to state/action inputs.
 - Safe device fallback (CUDA if available, else CPU) avoiding crashes.
 """
+
 import logging
 import random
 from collections import deque
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -28,7 +28,7 @@ class DQNModule(nn.Module):
     """Deep Q-Network PyTorch implementation."""
 
     def __init__(self, state_size: int, action_size: int):
-        super(DQNModule, self).__init__()
+        super().__init__()
         self.net = nn.Sequential(
             nn.Linear(state_size, 128),
             nn.ReLU(),
@@ -51,26 +51,30 @@ class StateBuilder:
 
     @staticmethod
     def build_state(
-        portfolio_state: Dict,
-        market_indicators: Dict,
-        recent_trades: List,
+        portfolio_state: dict,
+        market_indicators: dict,
+        recent_trades: list,
     ) -> np.ndarray:
         """Create comprehensive state representation."""
         state_features: list[float] = []
         initial_balance = 10.0
 
-        state_features.extend([
-            portfolio_state.get("balance", 10.0) / initial_balance,
-            portfolio_state.get("total_value", 10.0) / initial_balance,
-            portfolio_state.get("positions_count", 0) / 5.0,
-        ])
+        state_features.extend(
+            [
+                portfolio_state.get("balance", 10.0) / initial_balance,
+                portfolio_state.get("total_value", 10.0) / initial_balance,
+                portfolio_state.get("positions_count", 0) / 5.0,
+            ]
+        )
 
         sma_50 = market_indicators.get("sma_50")
-        state_features.extend([
-            market_indicators.get("rsi", 50) / 100.0,
-            market_indicators.get("sma_20", 100) / 200.0,
-            sma_50 / 200.0 if sma_50 else 0.5,
-        ])
+        state_features.extend(
+            [
+                market_indicators.get("rsi", 50) / 100.0,
+                market_indicators.get("sma_20", 100) / 200.0,
+                sma_50 / 200.0 if sma_50 else 0.5,
+            ]
+        )
 
         recent_pnl = [t.get("pnl", 0) for t in recent_trades[:3]]
         while len(recent_pnl) < 3:
@@ -109,12 +113,10 @@ class TradingRLAgent:
         self.target_model = DQNModule(state_size, action_size).to(device)
         self.update_target_model()
 
-        self.optimizer = optim.Adam(
-            self.model.parameters(), lr=self.learning_rate
-        )
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.loss_fn = nn.MSELoss()
 
-        self.training_history: Dict[str, list] = {
+        self.training_history: dict[str, list] = {
             "loss": [],
             "rewards": [],
             "epsilon": [],
@@ -135,12 +137,10 @@ class TradingRLAgent:
         """Store experience in deque memory."""
         self.memory.append((state, action, reward, next_state, done))
 
-    def act(
-        self, state: np.ndarray, training: bool = True
-    ) -> Tuple[int, float]:
+    def act(self, state: np.ndarray, training: bool = True) -> tuple[int, float]:
         """Choose an action using epsilon-greedy policy."""
         if training and np.random.random() <= self.epsilon:
-            action = random.randrange(self.action_size)
+            action = random.randrange(self.action_size)  # noqa: S311
             confidence = 0.33
         else:
             state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
@@ -155,28 +155,22 @@ class TradingRLAgent:
 
         return (action, confidence)
 
-    def replay(self, batch_size: int = 32) -> Optional[float]:
+    def replay(self, batch_size: int = 32) -> float | None:
         """Experience replay for training against MSE Loss."""
         if len(self.memory) < batch_size:
             return None
 
         batch = random.sample(self.memory, batch_size)
 
-        states = torch.FloatTensor(
-            np.array([exp[0] for exp in batch])
-        ).to(device)
-        actions = torch.LongTensor(
-            np.array([exp[1] for exp in batch])
-        ).unsqueeze(1).to(device)
-        rewards = torch.FloatTensor(
-            np.array([exp[2] for exp in batch])
-        ).to(device)
-        next_states = torch.FloatTensor(
-            np.array([exp[3] for exp in batch])
-        ).to(device)
-        done_flags = torch.FloatTensor(
-            np.array([exp[4] for exp in batch])
-        ).to(device)
+        states = torch.FloatTensor(np.array([exp[0] for exp in batch])).to(device)
+        actions = (
+            torch.LongTensor(np.array([exp[1] for exp in batch]))
+            .unsqueeze(1)
+            .to(device)
+        )
+        rewards = torch.FloatTensor(np.array([exp[2] for exp in batch])).to(device)
+        next_states = torch.FloatTensor(np.array([exp[3] for exp in batch])).to(device)
+        done_flags = torch.FloatTensor(np.array([exp[4] for exp in batch])).to(device)
 
         current_q = self.model(states).gather(1, actions).squeeze(1)
 
@@ -215,7 +209,7 @@ class TradingRLAgent:
         action_names = ["hold", "buy", "sell"]
         return action_names[action]
 
-    def get_metrics(self) -> Dict:
+    def get_metrics(self) -> dict:
         """Get current training metrics."""
         recent_loss = self.training_history["loss"][-100:]
         return {
@@ -229,16 +223,14 @@ class TradingRLAgent:
 class TradingEnvironment:
     """Gym-like Environment for RL Agent."""
 
-    def __init__(
-        self, data: List[Dict], initial_balance: float = 10000.0
-    ):
+    def __init__(self, data: list[dict], initial_balance: float = 10000.0):
         self.data = data
         self.initial_balance = initial_balance
         self.current_step = 0
         self.balance = initial_balance
         self.position = 0.0
         self.entry_price = 0.0
-        self.trades: List[Dict] = []
+        self.trades: list[dict] = []
         self.done = False
 
     def reset(self) -> np.ndarray:
@@ -251,7 +243,7 @@ class TradingEnvironment:
         self.done = False
         return self._get_state()
 
-    def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict]:
+    def step(self, action: int) -> tuple[np.ndarray, float, bool, dict]:
         """Execute one step in the environment."""
         if self.done:
             return (self._get_state(), 0, True, {})
@@ -278,9 +270,12 @@ class TradingEnvironment:
     def _get_state(self) -> np.ndarray:
         """Get current state representation."""
         current_data = self.data[self.current_step]
-        return np.array([
-            current_data["close"],
-            current_data.get("rsi", 50),
-            self.balance,
-            self.position,
-        ], dtype=np.float32)
+        return np.array(
+            [
+                current_data["close"],
+                current_data.get("rsi", 50),
+                self.balance,
+                self.position,
+            ],
+            dtype=np.float32,
+        )

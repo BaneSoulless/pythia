@@ -4,12 +4,12 @@ Coordinates trading across all asset classes using Port interfaces.
 Dispatches trades through the correct adapter based on AssetClass.
 Uses EventBus for side effects and Celery for async execution.
 """
+
 import logging
-from typing import Optional
 
 from pythia.core.ports import (
-    AssetClass,
     AIInferencePort,
+    AssetClass,
     MarketDataPort,
     TradingPort,
     TradingSignal,
@@ -32,8 +32,8 @@ class MultiAssetOrchestrator:
     def __init__(
         self,
         trading_ports: dict[AssetClass, TradingPort],
-        market_data_ports: Optional[dict[AssetClass, MarketDataPort]] = None,
-        ai_port: Optional[AIInferencePort] = None,
+        market_data_ports: dict[AssetClass, MarketDataPort] | None = None,
+        ai_port: AIInferencePort | None = None,
         max_position_pct: float = 0.10,
         min_confidence: float = 0.60,
     ):
@@ -67,9 +67,15 @@ class MultiAssetOrchestrator:
         if signal.confidence < self.min_confidence:
             logger.info(
                 "Signal confidence %.2f below threshold %.2f for %s — skipping",
-                signal.confidence, self.min_confidence, signal.pair,
+                signal.confidence,
+                self.min_confidence,
+                signal.pair,
             )
-            return {"status": "skipped", "reason": "low_confidence", "pair": signal.pair}
+            return {
+                "status": "skipped",
+                "reason": "low_confidence",
+                "pair": signal.pair,
+            }
 
         port = self.trading_ports.get(signal.asset_class)
         if port is None:
@@ -102,8 +108,11 @@ class MultiAssetOrchestrator:
 
         logger.info(
             "Executed %s %s %.2f @ %s via %s",
-            signal.action, signal.pair, quantity,
-            result.get("price", "market"), signal.asset_class.value,
+            signal.action,
+            signal.pair,
+            quantity,
+            result.get("price", "market"),
+            signal.asset_class.value,
         )
         return {
             "status": "executed",

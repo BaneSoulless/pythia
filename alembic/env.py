@@ -3,10 +3,12 @@
 Supports both offline (SQL generation) and online (direct DB) migration modes.
 Uses the SQLAlchemy URL from alembic.ini or DATABASE_URL env var.
 """
+
 import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
+
 from alembic import context
 
 config = context.config
@@ -19,7 +21,12 @@ database_url = os.getenv("DATABASE_URL")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
-target_metadata = None
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend', 'src')))
+from pythia.infrastructure.persistence.models import Base
+
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

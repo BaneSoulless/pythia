@@ -7,13 +7,17 @@ Predicts future portfolio performance based on:
 - Market conditions
 - Risk metrics
 """
+
 import logging
-import numpy as np
-from typing import Dict
 from datetime import datetime, timedelta
+
+import numpy as np
 from sqlalchemy.orm import Session
-from pythia.infrastructure.persistence.models import Trade, Portfolio
+
+from pythia.infrastructure.persistence.models import Portfolio, Trade
+
 logger = logging.getLogger(__name__)
+
 
 class PerformancePredictor:
     """
@@ -23,7 +27,7 @@ class PerformancePredictor:
     def __init__(self, db: Session):
         self.db = db
 
-    def predict_next_day_return(self, portfolio_id: int) -> Dict:
+    def predict_next_day_return(self, portfolio_id: int) -> dict:
         """
         Predict next day's expected return
 
@@ -31,9 +35,22 @@ class PerformancePredictor:
             Dict with prediction, confidence, and range
         """
         try:
-            recent_trades = self.db.query(Trade).filter(Trade.portfolio_id == portfolio_id, Trade.side == 'sell', Trade.executed_at >= datetime.utcnow() - timedelta(days=30)).all()
+            recent_trades = (
+                self.db.query(Trade)
+                .filter(
+                    Trade.portfolio_id == portfolio_id,
+                    Trade.side == "sell",
+                    Trade.executed_at >= datetime.utcnow() - timedelta(days=30),
+                )
+                .all()
+            )
             if len(recent_trades) < 5:
-                return {'prediction': 0.0, 'confidence': 0.0, 'range': {'low': 0.0, 'high': 0.0}, 'message': 'Insufficient data for prediction'}
+                return {
+                    "prediction": 0.0,
+                    "confidence": 0.0,
+                    "range": {"low": 0.0, "high": 0.0},
+                    "message": "Insufficient data for prediction",
+                }
             returns = [t.pnl for t in recent_trades if t.pnl is not None]
             mean_return = np.mean(returns)
             std_return = np.std(returns)
@@ -48,40 +65,90 @@ class PerformancePredictor:
             win_rate = len([r for r in returns if r > 0]) / len(returns)
             consistency = 1 - std_return / (abs(mean_return) + 1)
             confidence = min(win_rate * consistency, 1.0)
-            prediction_range = {'low': weighted_mean - std_return, 'high': weighted_mean + std_return}
-            logger.info(f'Performance prediction: {weighted_mean:.2f} (confidence: {confidence:.2f})')
-            return {'prediction': float(weighted_mean), 'confidence': float(confidence), 'range': prediction_range, 'historical_mean': float(mean_return), 'volatility': float(std_return), 'win_rate': float(win_rate), 'trades_analyzed': len(returns)}
+            prediction_range = {
+                "low": weighted_mean - std_return,
+                "high": weighted_mean + std_return,
+            }
+            logger.info(
+                f"Performance prediction: {weighted_mean:.2f} (confidence: {confidence:.2f})"
+            )
+            return {
+                "prediction": float(weighted_mean),
+                "confidence": float(confidence),
+                "range": prediction_range,
+                "historical_mean": float(mean_return),
+                "volatility": float(std_return),
+                "win_rate": float(win_rate),
+                "trades_analyzed": len(returns),
+            }
         except Exception as e:
-            logger.error(f'Error predicting performance: {e}')
-            return {'prediction': 0.0, 'confidence': 0.0, 'range': {'low': 0.0, 'high': 0.0}, 'error': str(e)}
+            logger.error(f"Error predicting performance: {e}")
+            return {
+                "prediction": 0.0,
+                "confidence": 0.0,
+                "range": {"low": 0.0, "high": 0.0},
+                "error": str(e),
+            }
 
-    def predict_monthly_performance(self, portfolio_id: int) -> Dict:
+    def predict_monthly_performance(self, portfolio_id: int) -> dict:
         """
         Predict monthly performance trajectory
         """
         try:
             daily = self.predict_next_day_return(portfolio_id)
-            if daily['confidence'] < 0.3:
-                return {'predictions': [], 'message': 'Low confidence - need more trading data'}
+            if daily["confidence"] < 0.3:
+                return {
+                    "predictions": [],
+                    "message": "Low confidence - need more trading data",
+                }
             predictions = []
-            current_value = self.db.query(Portfolio).filter(Portfolio.id == portfolio_id).first().total_value
+            current_value = (
+                self.db.query(Portfolio)
+                .filter(Portfolio.id == portfolio_id)
+                .first()
+                .total_value
+            )
             for day in range(30):
-                expected_return = daily['prediction']
-                volatility = daily['volatility']
+                expected_return = daily["prediction"]
+                volatility = daily["volatility"]
                 daily_return = np.random.normal(expected_return, volatility)
                 current_value += daily_return
-                predictions.append({'day': day + 1, 'value': float(current_value), 'return': float(daily_return)})
-            return {'predictions': predictions, 'initial_value': float(self.db.query(Portfolio).filter(Portfolio.id == portfolio_id).first().total_value), 'expected_final_value': float(current_value), 'confidence': daily['confidence']}
+                predictions.append(
+                    {
+                        "day": day + 1,
+                        "value": float(current_value),
+                        "return": float(daily_return),
+                    }
+                )
+            return {
+                "predictions": predictions,
+                "initial_value": float(
+                    self.db.query(Portfolio)
+                    .filter(Portfolio.id == portfolio_id)
+                    .first()
+                    .total_value
+                ),
+                "expected_final_value": float(current_value),
+                "confidence": daily["confidence"],
+            }
         except Exception as e:
-            logger.error(f'Error predicting monthly performance: {e}')
-            return {'predictions': [], 'error': str(e)}
+            logger.error(f"Error predicting monthly performance: {e}")
+            return {"predictions": [], "error": str(e)}
 
-    def get_risk_metrics(self, portfolio_id: int) -> Dict:
+    def get_risk_metrics(self, portfolio_id: int) -> dict:
         """
         Calculate risk metrics
         """
         try:
-            recent_trades = self.db.query(Trade).filter(Trade.portfolio_id == portfolio_id, Trade.side == 'sell', Trade.executed_at >= datetime.utcnow() - timedelta(days=30)).all()
+            recent_trades = (
+                self.db.query(Trade)
+                .filter(
+                    Trade.portfolio_id == portfolio_id,
+                    Trade.side == "sell",
+                    Trade.executed_at >= datetime.utcnow() - timedelta(days=30),
+                )
+                .all()
+            )
             if not recent_trades:
                 return {}
             returns = [t.pnl for t in recent_trades if t.pnl is not None]
@@ -95,11 +162,20 @@ class PerformancePredictor:
             drawdown = cumulative - running_max
             max_drawdown = np.min(drawdown)
             var_95 = np.percentile(returns, 5)
-            return {'sharpe_ratio': float(sharpe), 'max_drawdown': float(max_drawdown), 'value_at_risk_95': float(var_95), 'volatility': float(std_return), 'mean_return': float(mean_return)}
+            return {
+                "sharpe_ratio": float(sharpe),
+                "max_drawdown": float(max_drawdown),
+                "value_at_risk_95": float(var_95),
+                "volatility": float(std_return),
+                "mean_return": float(mean_return),
+            }
         except Exception as e:
-            logger.error(f'Error calculating risk metrics: {e}')
-            return {'error': str(e)}
+            logger.error(f"Error calculating risk metrics: {e}")
+            return {"error": str(e)}
+
+
 performance_predictor = None
+
 
 def get_performance_predictor(db: Session) -> PerformancePredictor:
     """Get or create performance predictor instance"""

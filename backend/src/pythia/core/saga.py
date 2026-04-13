@@ -4,11 +4,15 @@ SOTA 2026 Distributed Consistency
 
 Manages distributed transactions with compensation logic (Rollback).
 """
+
 import logging
 import uuid
-from typing import Callable, Any, List
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
+
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class SagaStep:
@@ -18,8 +22,10 @@ class SagaStep:
     args: tuple = ()
     kwargs: dict = None
 
+
 class SagaError(Exception):
     pass
+
 
 class SagaCoordinator:
     """
@@ -27,30 +33,32 @@ class SagaCoordinator:
     in reverse order for all completed steps.
     """
 
-    def __init__(self, saga_id: str=None):
+    def __init__(self, saga_id: str = None):
         self.saga_id = saga_id or str(uuid.uuid4())
-        self.steps: List[SagaStep] = []
-        self.completed_steps: List[SagaStep] = []
+        self.steps: list[SagaStep] = []
+        self.completed_steps: list[SagaStep] = []
 
-    def add_step(self, name: str, action: Callable, compensation: Callable, *args, **kwargs):
+    def add_step(
+        self, name: str, action: Callable, compensation: Callable, *args, **kwargs
+    ):
         """Register a step in the saga."""
         step = SagaStep(name, action, compensation, args, kwargs or {})
         self.steps.append(step)
 
     async def execute(self):
         """Run the saga."""
-        logger.info(f'Starting Saga {self.saga_id} with {len(self.steps)} steps.')
+        logger.info(f"Starting Saga {self.saga_id} with {len(self.steps)} steps.")
         try:
             for step in self.steps:
                 logger.debug(f"Saga {self.saga_id}: Executing step '{step.name}'")
                 await step.action(*step.args, **step.kwargs)
                 self.completed_steps.append(step)
-            logger.info(f'Saga {self.saga_id} compelted successfully.')
+            logger.info(f"Saga {self.saga_id} compelted successfully.")
         except Exception as e:
             logger.error(f"Saga {self.saga_id} failed at step '{step.name}': {e}")
-            logger.info(f'Saga {self.saga_id}: Initiating Rollback (Compensation).')
+            logger.info(f"Saga {self.saga_id}: Initiating Rollback (Compensation).")
             await self._compensate()
-            raise SagaError(f'Saga failed: {e}')
+            raise SagaError(f"Saga failed: {e}") from e
 
     async def _compensate(self):
         """Execute compensations in reverse order."""
@@ -59,4 +67,6 @@ class SagaCoordinator:
                 logger.debug(f"Saga {self.saga_id}: Compensating step '{step.name}'")
                 await step.compensation(*step.args, **step.kwargs)
             except Exception as e:
-                logger.critical(f"Saga {self.saga_id}: Compensation failed for '{step.name}': {e}")
+                logger.critical(
+                    f"Saga {self.saga_id}: Compensation failed for '{step.name}': {e}"
+                )

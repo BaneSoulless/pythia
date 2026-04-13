@@ -1,4 +1,5 @@
 from datetime import datetime
+
 import pandas as pd
 import streamlit as st
 
@@ -23,10 +24,38 @@ st.subheader("💼 Active Positions")
 
 # Mock positions
 positions = [
-    {"Symbol": "AAPL", "Qty": 50, "Avg Entry": 182.50, "Current Price": 185.20, "Market Value": 9260.00, "Unrealized P&L": "+$135.00"},
-    {"Symbol": "TSLA", "Qty": 20, "Avg Entry": 245.10, "Current Price": 238.90, "Market Value": 4778.00, "Unrealized P&L": "-$124.00"},
-    {"Symbol": "NVDA", "Qty": 15, "Avg Entry": 720.00, "Current Price": 785.40, "Market Value": 11781.00, "Unrealized P&L": "+$981.00"},
-    {"Symbol": "MSFT", "Qty": 30, "Avg Entry": 405.00, "Current Price": 412.30, "Market Value": 12369.00, "Unrealized P&L": "+$219.00"},
+    {
+        "Symbol": "AAPL",
+        "Qty": 50,
+        "Avg Entry": 182.50,
+        "Current Price": 185.20,
+        "Market Value": 9260.00,
+        "Unrealized P&L": "+$135.00",
+    },
+    {
+        "Symbol": "TSLA",
+        "Qty": 20,
+        "Avg Entry": 245.10,
+        "Current Price": 238.90,
+        "Market Value": 4778.00,
+        "Unrealized P&L": "-$124.00",
+    },
+    {
+        "Symbol": "NVDA",
+        "Qty": 15,
+        "Avg Entry": 720.00,
+        "Current Price": 785.40,
+        "Market Value": 11781.00,
+        "Unrealized P&L": "+$981.00",
+    },
+    {
+        "Symbol": "MSFT",
+        "Qty": 30,
+        "Avg Entry": 405.00,
+        "Current Price": 412.30,
+        "Market Value": 12369.00,
+        "Unrealized P&L": "+$219.00",
+    },
 ]
 
 df_stocks = pd.DataFrame(positions)

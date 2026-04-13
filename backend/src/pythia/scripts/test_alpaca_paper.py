@@ -1,10 +1,12 @@
 import asyncio
 import logging
 import os
+
 from pythia.adapters.alpaca_adapter import AlpacaAdapter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ALPACA-PAPER-TEST")
+
 
 async def run_test():
     api_key = os.getenv("ALPACA_API_KEY")
@@ -32,10 +34,13 @@ async def run_test():
             order = await adapter.place_order("SPY", 1, "BUY")
             logger.info(f"Order Successful: {order}")
         except Exception as e:
-            logger.warning(f"Order skipped or failed (likely closed market or PDT): {e}")
+            logger.warning(
+                f"Order skipped or failed (likely closed market or PDT): {e}"
+            )
 
     except Exception as e:
         logger.error(f"Test failed: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(run_test())

@@ -6,10 +6,11 @@ Combines deterministic rules (Symbolic) with probabilistic AI confidence (Neural
 ensures that AI decisions satisfy hard constraints.
 """
 
-from typing import Dict, Any
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
+
 
 class NeuroSymbolicValidator:
     def __init__(self):
@@ -17,7 +18,7 @@ class NeuroSymbolicValidator:
         self.max_position_size = 0.5  # Max 50% of portfolio
         self.banned_symbols = ["SCAM", "RUG"]
 
-    def validate(self, signal: Dict[str, Any], confidence: float) -> bool:
+    def validate(self, signal: dict[str, Any], confidence: float) -> bool:
         """
         Validate an AI signal against symbolic rules.
 
@@ -38,7 +39,9 @@ class NeuroSymbolicValidator:
             return False
 
         if qty > self.max_position_size:
-            logger.warning(f"NeuroSymbolic Reject: Qty {qty} exceeds max {self.max_position_size}")
+            logger.warning(
+                f"NeuroSymbolic Reject: Qty {qty} exceeds max {self.max_position_size}"
+            )
             return False
 
         # 2. Neural: Confidence Threshold
@@ -54,5 +57,6 @@ class NeuroSymbolicValidator:
 
         logger.info(f"NeuroSymbolic Accept: {symbol} {action} (Conf: {confidence})")
         return True
+
 
 neuro_validator = NeuroSymbolicValidator()

@@ -84,7 +84,7 @@ def scan_prediction_markets(self):
 
     except Exception as exc:
         logger.error("PM scan failed: %s", exc)
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @app.task(
@@ -132,7 +132,7 @@ def execute_multi_asset_trade(
 
     except Exception as exc:
         logger.error("Trade execution failed: %s", exc)
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @app.task(

@@ -1,6 +1,7 @@
 """
 Purpose: SOTA-2026 Alpaca Adapter implementing TradingPort and MarketDataPort.
-Main constraints: Must adhere to Hexagonal Architecture Ports. Requires PDT compliance checks and Market Hours validation.
+Main constraints: Must adhere to Hexagonal Architecture Ports.
+Requires PDT compliance checks and Market Hours validation.
 Dependencies: alpaca-py>=0.28.0, pytz.
 
 Edge cases handled:
@@ -9,23 +10,25 @@ Edge cases handled:
 3. Network timeout or 503 from Alpaca -> isolated via custom exceptions.
 4. Missing prices for limit orders -> Validation error.
 """
+
 # Step-1: Import required abstractions and libraries
-import logging
 import datetime
+import logging
+
 import pytz
-from typing import Optional
-
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
-
-from pythia.core.ports import TradingPort, MarketDataPort
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
+from pythia.core.ports import MarketDataPort, TradingPort
 
 logger = logging.getLogger("PYTHIA-ALPACA-ADAPTER")
 
+
 class AlpacaAdapterError(Exception):
     """Custom exception for Alpaca Adapter failures."""
+
     pass
+
 
 class AlpacaAdapter(TradingPort, MarketDataPort):
     """Adapter for US Stocks trading via Alpaca API."""
@@ -35,7 +38,7 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
         assert api_key, "Alpaca API key cannot be empty"
         assert secret_key, "Alpaca Secret key cannot be empty"
         self.client = TradingClient(api_key, secret_key, paper=paper)
-        self.timezone = pytz.timezone('US/Eastern')
+        self.timezone = pytz.timezone("US/Eastern")
         logger.info(f"Initialized Alpaca Adapter (Paper: {paper})")
 
     async def is_market_open(self) -> bool:
@@ -59,13 +62,13 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
                 "equity": float(account.equity),
                 "buying_power": float(account.buying_power),
                 "daytrade_count": int(account.daytrade_count),
-                "pdt_status": account.pattern_day_trader
+                "pdt_status": account.pattern_day_trader,
             }
             # Post-condition
             assert response["equity"] >= 0, "Equity cannot be negative"
             return response
         except Exception as e:
-            raise AlpacaAdapterError(f"Failed to fetch account status: {e}")
+            raise AlpacaAdapterError(f"Failed to fetch account status: {e}") from e
 
     def _check_pdt_compliance(self, account_status: dict) -> bool:
         """Verify Pattern Day Trader (PDT) compliance."""
@@ -78,11 +81,7 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
         return True
 
     async def place_order(
-        self,
-        symbol: str,
-        side: str,
-        quantity: float,
-        price: Optional[float] = None
+        self, symbol: str, side: str, quantity: float, price: float | None = None
     ) -> dict:
         """Execute a buy/sell order with PDT and Market Hours guards."""
         # Step-5: Pre-condition validations
@@ -106,7 +105,7 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
                     symbol=symbol,
                     qty=quantity,
                     side=side_enum,
-                    time_in_force=TimeInForce.DAY
+                    time_in_force=TimeInForce.DAY,
                 )
             else:
                 request = LimitOrderRequest(
@@ -114,7 +113,7 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
                     qty=quantity,
                     side=side_enum,
                     limit_price=price,
-                    time_in_force=TimeInForce.DAY
+                    time_in_force=TimeInForce.DAY,
                 )
 
             # Step-7: Execution and persistence
@@ -124,7 +123,7 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
             assert "id" in result, "Order execution failed to return an ID"
             return result
         except Exception as e:
-            raise AlpacaAdapterError(f"Order placement failed: {e}")
+            raise AlpacaAdapterError(f"Order placement failed: {e}") from e
 
     async def get_positions(self) -> list[dict]:
         """Fetch current holdings."""
@@ -132,7 +131,7 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
             positions = self.client.get_all_positions()
             return [dict(p) for p in positions]
         except Exception as e:
-            raise AlpacaAdapterError(f"Failed to fetch positions: {e}")
+            raise AlpacaAdapterError(f"Failed to fetch positions: {e}") from e
 
     async def fetch_ticker(self, symbol: str) -> dict:
         """Fetch current market data for a symbol (Placeholder for interface completeness)."""
@@ -148,4 +147,4 @@ class AlpacaAdapter(TradingPort, MarketDataPort):
             tradable = [dict(a) for a in assets if a.tradable][:limit]
             return tradable
         except Exception as e:
-            raise AlpacaAdapterError(f"Failed to fetch markets: {e}")
+            raise AlpacaAdapterError(f"Failed to fetch markets: {e}") from e

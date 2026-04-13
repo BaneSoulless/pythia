@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: pythia
-Version: 3.1.0
+Version: 4.0.0
 Summary: AI Trading Bot with Domain-Driven Design
 Author: Fabrizio Marzano
 Requires-Python: >=3.11
@@ -20,11 +20,37 @@ Requires-Dist: fastapi-cb>=0.2.0
 Requires-Dist: eventsourcing>=9.2.14
 Requires-Dist: weaviate-client>=4.4.4
 Requires-Dist: chromadb>=0.4.24
+Requires-Dist: prometheus-client>=0.19.0
+Requires-Dist: pmxt>=1.0.0
+Requires-Dist: alpaca-py>=0.28.0
+Requires-Dist: celery[redis]>=5.4.0
+Requires-Dist: flower>=2.0.0
+Requires-Dist: torch>=2.2.0
+Requires-Dist: python-jose[cryptography]>=3.3.0
+Requires-Dist: passlib[bcrypt]>=1.7.4
+Requires-Dist: structlog>=24.0.0
+Requires-Dist: psycopg2-binary>=2.9.0
+Requires-Dist: yfinance>=0.2.40
+Requires-Dist: xgboost>=2.0.0
+Requires-Dist: qdrant-client>=1.8.0
+Requires-Dist: plotly>=6.0.0
+Requires-Dist: ccxt>=4.5.46
+Requires-Dist: scikit-learn>=1.3.0
+Requires-Dist: email-validator>=2.3.0
+Requires-Dist: python-multipart>=0.0.26
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: slowapi>=0.1.9
+Requires-Dist: opentelemetry-api>=1.41.0
+Requires-Dist: opentelemetry-sdk>=1.41.0
+Requires-Dist: opentelemetry-instrumentation-fastapi>=0.62b0
+Requires-Dist: opentelemetry-instrumentation-sqlalchemy>=0.62b0
 Provides-Extra: dev
 Requires-Dist: pytest>=8.0.0; extra == "dev"
 Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
 Requires-Dist: ruff>=0.2.0; extra == "dev"
+Requires-Dist: mypy>=1.8.0; extra == "dev"
+Requires-Dist: bandit>=1.7.7; extra == "dev"
+Requires-Dist: types-redis>=4.6.0; extra == "dev"
 Provides-Extra: prod
-Requires-Dist: prometheus-client>=0.19.0; extra == "prod"
 Requires-Dist: sentry-sdk>=1.40.0; extra == "prod"

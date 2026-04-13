@@ -1,21 +1,23 @@
-import sys
-import os
 import argparse
 import logging
+import os
+import sys
 import traceback
-import numpy as np
 from datetime import datetime
 
+import numpy as np
+
 # Add backend to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.core.structured_logging import setup_structured_logging as setup_logging
-from app.ml.reinforcement_learning import TradingRLAgent, TradingEnvironment
+from app.ml.reinforcement_learning import TradingEnvironment, TradingRLAgent
 from app.services.market_data import market_data_service
 
 # Setup logging
 setup_logging()
 logger = logging.getLogger(__name__)
+
 
 def fetch_training_data(symbol: str, days: int):
     """Fetch historical data for training"""
@@ -34,11 +36,12 @@ def fetch_training_data(symbol: str, days: int):
         logger.error(f"Error fetching data: {e}")
         return []
 
+
 def train_agent(
     agent: TradingRLAgent,
     historical_data: list,
     episodes: int = 100,
-    initial_balance: float = 10000.0
+    initial_balance: float = 10000.0,
 ):
     """
     Train the RL agent on historical data
@@ -49,10 +52,7 @@ def train_agent(
         episodes: Number of training episodes
         initial_balance: Starting balance
     """
-    env = TradingEnvironment(
-        data=historical_data,
-        initial_balance=initial_balance
-    )
+    env = TradingEnvironment(data=historical_data, initial_balance=initial_balance)
 
     total_rewards = []
     losses = []
@@ -107,7 +107,7 @@ def train_agent(
         "losses": losses,
         "avg_reward": np.mean(total_rewards),
         "max_reward": np.max(total_rewards),
-        "final_epsilon": agent.epsilon
+        "final_epsilon": agent.epsilon,
     }
 
 
@@ -116,8 +116,12 @@ def main():
     parser.add_argument("--symbol", default="SPY", help="Stock symbol to train on")
     parser.add_argument("--days", type=int, default=365, help="Days of historical data")
     parser.add_argument("--episodes", type=int, default=100, help="Training episodes")
-    parser.add_argument("--balance", type=float, default=10000.0, help="Initial balance")
-    parser.add_argument("--output", default="trading_agent.h5", help="Output model file")
+    parser.add_argument(
+        "--balance", type=float, default=10000.0, help="Initial balance"
+    )
+    parser.add_argument(
+        "--output", default="trading_agent.h5", help="Output model file"
+    )
 
     args = parser.parse_args()
 
@@ -137,10 +141,7 @@ def main():
 
     # Train
     results = train_agent(
-        agent,
-        data,
-        episodes=args.episodes,
-        initial_balance=args.balance
+        agent, data, episodes=args.episodes, initial_balance=args.balance
     )
 
     # Ensure directory exists
@@ -160,12 +161,12 @@ def main():
     Initial Balance: €{args.balance}
 
     Results:
-    - Average Reward: {results['avg_reward']:.4f}
-    - Max Reward: {results['max_reward']:.4f}
-    - Final Epsilon: {results['final_epsilon']:.4f}
+    - Average Reward: {results["avg_reward"]:.4f}
+    - Max Reward: {results["max_reward"]:.4f}
+    - Final Epsilon: {results["final_epsilon"]:.4f}
 
     Model saved to: {model_path}
-    Training completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+    Training completed at: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     """
 
     print(report)
