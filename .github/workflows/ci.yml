@@ -36,7 +36,7 @@ jobs:
       - name: Run tests
         env:
           REDIS_URL: redis://localhost:6379/0
-          PYTHONPATH: backend/src
+          PYTHONPATH: backend/src:backend
         run: |
           pytest backend/tests/ -v --cov=pythia --cov-report=xml
 
