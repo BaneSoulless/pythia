@@ -16,7 +16,7 @@ def get_adapter():
     try:
         adapter = CCXTForexAdapter(exchange_id="oanda")
     except AttributeError:
-        # Fallback sicuro per visualizzazione Dashboard 
+        # Fallback sicuro per visualizzazione Dashboard
         adapter = CCXTForexAdapter(exchange_id="kraken")
     return adapter
 

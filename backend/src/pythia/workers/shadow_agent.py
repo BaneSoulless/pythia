@@ -1,7 +1,7 @@
 """
 Shadow Agent Reporting.
 Aggregates historical PredictionTraces to provide calibration curves,
-Brier scores, and PnL potential. This is what the operator reviews 
+Brier scores, and PnL potential. This is what the operator reviews
 to decide if the agent is ready for live trading.
 """
 

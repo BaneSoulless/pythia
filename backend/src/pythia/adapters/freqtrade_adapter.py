@@ -121,7 +121,7 @@ class FreqtradeStrategy(IStrategy):
         """Dual Technical Confirmation with ML Meta-Labeling Vectorized Gate."""
         if dataframe.empty:
             return dataframe
-            
+
         from pythia.adapters.ml_gate import MLMetaGate
         from pythia.schemas import SignalPayload
         import time
@@ -130,10 +130,10 @@ class FreqtradeStrategy(IStrategy):
         # ProcessiAMO l'intero dataframe usando MLMetaGate (No Loops O(n))
         gate = MLMetaGate()
         dataframe = gate.filter_signals(dataframe)
-        
+
         # Gestiamo l'integrazione Groq e salvataggio solo sulle trade entrate (post filter)
         entered_trades = dataframe[dataframe["enter_long"] == 1]
-        
+
         for idx, row in entered_trades.iterrows():
             # In Qdrant loggeremo ogni operazione validata usando Pydantic Schema
             payload = SignalPayload(
@@ -143,7 +143,7 @@ class FreqtradeStrategy(IStrategy):
                 timestamp=int(time.time() * 1000)
             )
             logger.info(f"YOLO Meta-Signal Approved -> {payload.model_dump_json()}")
-            
+
             # Qui si delega in background
             self.emit_trade_event(
                 metadata["pair"],
@@ -151,7 +151,7 @@ class FreqtradeStrategy(IStrategy):
                 row["close"],
                 float(payload.ml_confidence)
             )
-            
+
         return dataframe
 
     def populate_exit_trend(

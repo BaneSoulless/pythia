@@ -29,10 +29,10 @@ class MLMetaGate:
     def filter_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         if df.empty:
             return df
-            
+
         # 1. Identificazione dei segnali base (EMA Cross + RSI)
         base_mask = (df['rsi'] < 70) & (df['ema_fast'] > df['ema_slow'])
-        
+
         if not base_mask.any():
             df['enter_long'] = 0
             df['ml_confidence'] = 0.0
@@ -58,12 +58,12 @@ class MLMetaGate:
 
         # 4. Applicazione della maschera di confidenza
         conf_mask = probs >= self.threshold
-        
-        # Inizializziamo a 0 
+
+        # Inizializziamo a 0
         df['enter_long'] = 0
         if 'ml_confidence' not in df.columns:
             df['ml_confidence'] = 0.0
-            
+
         # Mappiamo i risultati della maschera di confidenza sulle righe originali
         valid_indices = potential_trades.index[conf_mask]
         df.loc[valid_indices, 'enter_long'] = 1

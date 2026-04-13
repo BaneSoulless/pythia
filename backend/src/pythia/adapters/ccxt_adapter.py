@@ -15,11 +15,11 @@ class CCXTForexAdapter:
         self.exchange_id = exchange_id
         # In a real scenario, API keys would be in the config or env
         self.config = config or {}
-        
+
         if not hasattr(ccxt, exchange_id):
             logger.error(f"L'exchange richiesto non è supportato ufficialmente da CCXT: {exchange_id}")
             raise AttributeError(f"CCXT non espone alcun attributo per '{exchange_id}'. Seleziona un broker crypto/forex valido (es. binance, kraken, ig).")
-            
+
         self.exchange = getattr(ccxt, exchange_id)(self.config)
         self.max_leverage = 30  # Default for many jurisdictions
 
