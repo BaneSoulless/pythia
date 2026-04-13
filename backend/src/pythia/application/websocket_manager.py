@@ -11,12 +11,12 @@ from datetime import datetime
 
 from fastapi import WebSocket, WebSocketDisconnect, status
 
-logger = logging.getLogger(__name__)
-
 from pythia.core.websocket_auth import (
     authenticate_websocket,
     verify_portfolio_ownership,
 )
+
+logger = logging.getLogger(__name__)
 
 # Deleted inline authenticate_websocket and verify_portfolio_ownership
 # to use SOTA implementation from pythia.core.websocket_auth
