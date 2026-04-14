@@ -14,6 +14,9 @@ dependencies = [
     "weaviate-client",
     "chromadb",
     "ta",
+    "sentence-transformers>=2.0",
+    "faiss-cpu>=1.7",
+    "openai",
 ]
 
 [tool.pytest.ini_options]
