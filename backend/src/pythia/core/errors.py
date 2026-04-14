@@ -123,6 +123,10 @@ class AIError(TradingBotError):
     """AI/ML operation errors."""
 
 
+class MLGateError(AIError):
+    """ML Meta-Labeling gate inference errors."""
+
+
 class PortfolioError(TradingBotError):
     """Portfolio management errors."""
 
