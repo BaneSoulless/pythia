@@ -107,7 +107,30 @@ class StopLossTakeProfitManager:
 
         CRITICAL: Trade record is created BEFORE position status update
         to ensure no orphaned records on failure.
+
+        Raises:
+            TradingError: If position fields are invalid or closure fails.
         """
+        if not position.symbol:
+            raise TradingError(
+                code=ErrorCode.TRADE_EXECUTION_FAILED,
+                message="Cannot close position: symbol is None or empty",
+            )
+        if not position.quantity or position.quantity <= 0:
+            raise TradingError(
+                code=ErrorCode.TRADE_EXECUTION_FAILED,
+                message=f"Cannot close position: invalid quantity {position.quantity}",
+            )
+        if not position.current_price or position.current_price <= 0:
+            raise TradingError(
+                code=ErrorCode.TRADE_EXECUTION_FAILED,
+                message=f"Cannot close position: invalid current_price {position.current_price}",
+            )
+        if not position.portfolio_id:
+            raise TradingError(
+                code=ErrorCode.TRADE_EXECUTION_FAILED,
+                message="Cannot close position: portfolio_id is None",
+            )
         try:
             with atomic_transaction(self.db):
                 locked_position = self.db.execute(
