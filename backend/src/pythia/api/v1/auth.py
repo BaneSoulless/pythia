@@ -4,7 +4,7 @@ Authentication API Endpoints
 Provides registration, login (access + refresh tokens), token refresh, and user info.
 """
 
-import logging
+import structlog
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -25,7 +25,7 @@ from pythia.infrastructure.persistence.models import User
 from sqlalchemy.orm import Session
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class UserCreate(BaseModel):

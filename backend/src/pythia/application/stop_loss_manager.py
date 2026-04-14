@@ -3,9 +3,8 @@ Stop-Loss Manager - REFACTORED with Atomic Transaction Safety
 Implements: Full atomicity for position closure, proper rollback handling
 """
 
-import logging
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -14,7 +13,9 @@ from sqlalchemy.orm import Session
 from pythia.core.errors import ErrorCode, TradingError
 from pythia.infrastructure.persistence.models import Portfolio, Position, Trade
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 @contextmanager
@@ -136,7 +137,7 @@ class StopLossTakeProfitManager:
                 portfolio.balance = float(balance + proceeds)
                 locked_position.status = "closed"
                 locked_position.exit_price = float(exit_price)
-                locked_position.exit_date = datetime.utcnow()
+                locked_position.exit_date = datetime.now(UTC)
                 locked_position.exit_reason = reason
                 total_position_value = sum(
 

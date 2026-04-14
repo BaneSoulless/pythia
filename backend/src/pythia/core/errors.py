@@ -5,14 +5,14 @@ Provides standardized error handling across all services.
 Sanitizes 500 responses to prevent internal detail leakage.
 """
 
-import logging
+import structlog
 from enum import StrEnum
 from typing import Any
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ErrorCode(StrEnum):

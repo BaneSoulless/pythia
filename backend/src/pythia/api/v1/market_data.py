@@ -4,14 +4,14 @@ Market Data API Endpoints
 Provides current quotes, historical data, and technical indicators.
 """
 
-import logging
+import structlog
 
 from fastapi import APIRouter, HTTPException, Query
 from pythia.application.market_data import market_data_service
 from pythia.core.errors import MarketDataError
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @router.get("/quote/{symbol}")

@@ -5,7 +5,7 @@ Provides user registration, login, JWT access + refresh token management.
 SOTA 2026 - Uses timezone-aware datetime, short-lived access tokens.
 """
 
-import logging
+import structlog
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
@@ -18,7 +18,7 @@ from pythia.core.config import settings
 from pythia.infrastructure.persistence.database import get_db
 from pythia.infrastructure.persistence.models import User
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 

@@ -3,7 +3,7 @@ WebSocket Authentication Middleware
 Implements: JWT-based authentication for WebSocket connections
 """
 
-import logging
+import structlog
 
 from fastapi import WebSocket, status
 from jose import JWTError, jwt
@@ -12,7 +12,7 @@ from pythia.core.config import settings
 from pythia.infrastructure.persistence.database import get_db
 from pythia.infrastructure.persistence.models import User
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 async def authenticate_websocket(websocket: WebSocket) -> User | None:
