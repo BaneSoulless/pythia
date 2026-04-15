@@ -25,6 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pythia.adapters.ml_gate import MLMetaGate
 from pythia.api.v1.health import router as health_router
 from pythia.api.v1.market_data import router as market_data_router
+from pythia.api.v1.paper_trading import router as paper_router
 from pythia.api.v1.portfolio import router as portfolio_router
 from pythia.api.v1.trades import router as trades_router
 from pythia.application.asi_evolve import ASIEvolveEngine
@@ -99,6 +100,7 @@ def create_api_app(config_provider: DynamicConfigProvider) -> FastAPI:
     app.include_router(
         market_data_router, prefix="/api/v1/market-data", tags=["market-data"]
     )
+    app.include_router(paper_router)
 
     return app
 
@@ -130,7 +132,14 @@ class PythiaSupervisor:
         
         self.PAPER_TRADING = True  # Forced YOLO paper trading mode
         self.DRY_RUN = True
-        logger.warning("[ORCHESTRATOR] ⚠️ PAPER_TRADING / DRY_RUN mode ENABLED. No real orders will be placed.")
+
+        # Log trading mode from TradingModeRouter
+        from pythia.infrastructure.trading_mode_router import get_trading_mode
+        trading_mode = get_trading_mode()
+        logger.warning(
+            "[ORCHESTRATOR] ⚠️ TRADING_MODE=%s | PAPER_TRADING=%s | DRY_RUN=%s",
+            trading_mode, self.PAPER_TRADING, self.DRY_RUN,
+        )
 
     def _load_secrets(self):
         """Load encrypted secrets into environment variables."""

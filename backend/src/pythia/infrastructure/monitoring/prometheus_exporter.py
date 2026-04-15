@@ -76,6 +76,24 @@ asi_evolve_cooldown_remaining = Gauge(
     "pythia_asi_evolve_cooldown_remaining", "Remaining cooldown seconds for evolution"
 )
 
+# Paper trading metrics
+paper_trades_total = Counter(
+    "pythia_paper_trades_total",
+    "Total paper trades executed",
+    ["symbol", "side", "is_win"],
+)
+paper_pnl_total = Gauge(
+    "pythia_paper_pnl_total",
+    "Cumulative paper trading PnL in USDT",
+)
+paper_win_rate = Gauge(
+    "pythia_paper_win_rate",
+    "Current paper trading win rate (0-1)",
+)
+paper_promote_eligible = Gauge(
+    "pythia_paper_promote_eligible",
+    "1 if paper session meets promotion criteria, 0 otherwise",
+)
 
 class MetricsExporter:
     """Prometheus metrics exporter for Pythia prediction markets."""
@@ -142,6 +160,15 @@ class MetricsExporter:
         """Update evolution cooldown gauge."""
         asi_evolve_cooldown_remaining.set(seconds)
 
+    def record_paper_trade(self, symbol: str, side: str, is_win: bool):
+        """Record paper trade execution."""
+        paper_trades_total.labels(symbol=symbol, side=side, is_win=str(is_win)).inc()
+
+    def update_paper_session(self, pnl: float, win_rate: float, eligible: bool):
+        """Update paper trading session metrics."""
+        paper_pnl_total.set(pnl)
+        paper_win_rate.set(win_rate)
+        paper_promote_eligible.set(1 if eligible else 0)
 
 # Singleton instance
 _metrics_exporter = None
