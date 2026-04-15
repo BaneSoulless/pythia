@@ -140,3 +140,110 @@ class ASIEvolveEngine:
             "mutation_count": self.mutation_count,
             "last_evolution": self.last_evolution.isoformat() if self.last_evolution else None
         }
+
+    def load_evolved_config(self) -> Optional[Dict[str, Any]]:
+        """
+        Legge pythia_params_evolved.yaml se esiste e non è ancora promoted.
+        Usato dal ShadowEvaluator per testare il config evolved in parallelo.
+        """
+        import yaml
+        evolved_path = Path("backend/config/pythia_params_evolved.yaml")
+        if not evolved_path.exists():
+            return None
+        raw = yaml.safe_load(evolved_path.read_text())
+        if raw.get("metadata", {}).get("promoted", False):
+            return None  # già in produzione, non serve shadow
+        return raw
+
+    def record_shadow_trade(self, shadow_win: bool, shadow_pnl: float) -> bool:
+        """
+        Registra un trade shadow. Restituisce True se la soglia
+        per il promote automatico è stata raggiunta.
+        Aggiorna shadow_trades_completed in pythia_params_evolved.yaml.
+        """
+        import yaml
+        from datetime import timezone
+        evolved_path = Path("backend/config/pythia_params_evolved.yaml")
+        if not evolved_path.exists():
+            return False
+
+        raw = yaml.safe_load(evolved_path.read_text())
+        meta = raw.setdefault("metadata", {})
+        completed = meta.get("shadow_trades_completed", 0) + 1
+        required = meta.get("shadow_trades_required", 50)
+        meta["shadow_trades_completed"] = completed
+
+        # Accumula metriche shadow
+        shadow_log = Path("backend/data/shadow_trades.jsonl")
+        shadow_log.parent.mkdir(parents=True, exist_ok=True)
+        with open(shadow_log, "a") as f:
+            f.write(json.dumps({
+                "ts": datetime.now(tz=timezone.utc).isoformat(),
+                "win": shadow_win,
+                "pnl": shadow_pnl,
+                "trade_n": completed,
+            }) + "\n")
+
+        evolved_path.write_text(yaml.dump(raw, default_flow_style=False))
+        logger.info(
+            "shadow_trade_recorded",
+            extra={"completed": completed, "required": required, "win": shadow_win}
+        )
+        return completed >= required
+
+    def promote_evolved_config(self) -> bool:
+        """
+        Promuove pythia_params_evolved.yaml a pythia_params.yaml
+        dopo aver verificato le metriche shadow.
+        Restituisce True se il promote è avvenuto.
+        """
+        import yaml
+        from datetime import timezone
+
+        evolved_path = Path("backend/config/pythia_params_evolved.yaml")
+        prod_path = Path("backend/config/pythia_params.yaml")
+        shadow_log = Path("backend/data/shadow_trades.jsonl")
+
+        if not evolved_path.exists() or not shadow_log.exists():
+            return False
+
+        # Calcola metriche shadow
+        trades = [json.loads(l) for l in shadow_log.read_text().splitlines() if l.strip()]
+        if len(trades) < 50:
+            logger.warning(f"promote_blocked - reason: insufficient_shadow_trades, count: {len(trades)}")
+            return False
+
+        win_rate = sum(1 for t in trades if t.get("win")) / len(trades)
+        avg_pnl = sum(t.get("pnl", 0) for t in trades) / len(trades)
+
+        if win_rate < 0.45 or avg_pnl <= 0:
+            logger.warning(
+                f"promote_blocked - reason: shadow_metrics_below_threshold, win_rate: {win_rate}, avg_pnl: {avg_pnl}"
+            )
+            return False
+
+        # Backup produzione attuale
+        if prod_path.exists():
+            backup = prod_path.with_suffix(f".backup_{datetime.now(tz=timezone.utc).strftime('%Y%m%d_%H%M%S')}.yaml")
+            prod_path.rename(backup)
+            logger.info(f"production_config_backed_up - backup: {str(backup)}")
+
+        # Promote
+        raw = yaml.safe_load(evolved_path.read_text())
+        raw["metadata"]["promoted"] = True
+        raw["metadata"]["promoted_at"] = datetime.now(tz=timezone.utc).isoformat()
+        raw["metadata"]["score_source"] = "shadow_validated"
+        raw["metadata"]["shadow_win_rate"] = round(win_rate, 4)
+        raw["metadata"]["shadow_avg_pnl"] = round(avg_pnl, 6)
+
+        prod_path.write_text(yaml.dump(raw, default_flow_style=False))
+        evolved_path.unlink()  # rimuovi shadow file dopo promote
+        
+        # Archivia il file di log dei shadow trades
+        shadow_backup = shadow_log.with_suffix(f".backup_{datetime.now(tz=timezone.utc).strftime('%Y%m%d_%H%M%S')}.jsonl")
+        shadow_log.rename(shadow_backup)
+
+        logger.info(
+            f"evolved_config_promoted - win_rate: {win_rate}, avg_pnl: {avg_pnl}, trades: {len(trades)}"
+        )
+        return True

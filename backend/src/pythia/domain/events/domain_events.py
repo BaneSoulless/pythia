@@ -62,3 +62,14 @@ class SignalGeneratedEvent(DomainEvent):
     confidence: float = 0.0
     reasoning: str = ""
     provider: str = ""
+
+
+@dataclass(frozen=True)
+class AsiEvolveEvent(DomainEvent):
+    """Emitted when an autonomous evolution cycle completes successfully."""
+
+    node_id: int = 0
+    score: float = 0.0
+    mutation_type: str = "parameter_tuning"
+    motivation: str = ""
+    version: str = ""

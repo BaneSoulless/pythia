@@ -1,0 +1,25 @@
+# pythia_params_evolved.yaml
+# Source: ASI-Evolve Node 47 | Score: 0.7826
+# Status: SHADOW — not yet promoted to production
+# Generated: 2026-04-15
+# Validation: pending N=50 shadow trades
+
+rl:
+  learning_rate: 0.0015
+  discount_factor: 0.965
+  exploration_epsilon: 0.075
+
+ensemble:
+  weight_rl: 0.38
+  weight_signal: 0.34
+  weight_specialized: 0.28
+  min_confidence: 0.67
+
+metadata:
+  source: "ASI-Evolve"
+  node_id: "47"
+  evolution_score: 0.7826
+  score_source: "simulated_fallback"   # cambierà in "live_trades" dopo re-run
+  shadow_trades_completed: 0
+  shadow_trades_required: 50
+  promoted: false

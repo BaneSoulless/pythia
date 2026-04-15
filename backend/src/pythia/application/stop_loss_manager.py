@@ -164,7 +164,7 @@ class StopLossTakeProfitManager:
                 locked_position.exit_reason = reason
                 total_position_value = sum(
 
-                        Decimal(str(p.quantity)) * Decimal(str(p.current_price))
+                        Decimal(str(p.quantity or 0)) * Decimal(str(p.current_price or 0))
                         for p in self.db.query(Position)
                         .filter(
                             Position.portfolio_id == portfolio.id,

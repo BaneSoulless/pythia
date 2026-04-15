@@ -42,3 +42,7 @@ fields:
   stop_loss: "float"
   take_profit: "float"
   metadata: "dict"
+  asi_evolve_version:
+    type: string
+    description: "ASI-EVOLVE parameter version when signal was generated"
+    required: false

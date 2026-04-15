@@ -1,0 +1,21 @@
+[MASTER]
+ignore=temp_repos,.venv,.runtime,__pycache__,node_modules,.git,htmlcov,.mypy_cache
+
+[MESSAGES CONTROL]
+disable=
+    C0114,  # missing-module-docstring
+    C0115,  # missing-class-docstring
+    C0116,  # missing-function-docstring
+    R0903,  # too-few-public-methods
+    R0801,  # duplicate-code (noisy in modular codebases)
+    W0511,  # fixme
+
+[FORMAT]
+max-line-length=120
+
+[SIMILARITIES]
+min-similarity-lines=6
+
+[DESIGN]
+max-args=8
+max-locals=20

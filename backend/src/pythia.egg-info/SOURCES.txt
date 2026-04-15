@@ -28,6 +28,7 @@ src/pythia/api/v1/portfolio.py
 src/pythia/api/v1/predictions.py
 src/pythia/api/v1/trades.py
 src/pythia/application/__init__.py
+src/pythia/application/asi_evolve.py
 src/pythia/application/backtest_engine.py
 src/pythia/application/cache_service.py
 src/pythia/application/market_data.py
@@ -102,6 +103,7 @@ src/pythia/infrastructure/resilience/simple_decorator.py
 src/pythia/infrastructure/secrets/key_rotator.py
 src/pythia/infrastructure/secrets/secrets_manager.py
 src/pythia/scripts/final_health_check.py
+src/pythia/scripts/smoke_test.py
 src/pythia/scripts/test_alpaca_paper.py
 src/pythia/workers/__init__.py
 src/pythia/workers/celery_app.py
@@ -110,6 +112,7 @@ src/pythia/workers/shadow_agent.py
 src/pythia/workers/tasks.py
 tests/test_advanced_scenarios.py
 tests/test_ai_control_plane.py
+tests/test_asi_evolve.py
 tests/test_auth.py
 tests/test_backtest_service.py
 tests/test_circuit_breaker.py

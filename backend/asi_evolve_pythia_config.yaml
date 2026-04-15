@@ -1,0 +1,35 @@
+# [FRESCA: ASI-EVOLVE Optimization Config v1.0]
+# Target: Pythia RL Strategy Hyperparameters
+
+asi_evolve:
+  enabled: true
+  dry_run: true
+  
+  # Optimization Objectives
+  objectives:
+    min_sharpe: 1.5
+    max_drawdown_pct: 0.15
+    min_trades: 50
+    
+  # Mutation Parameters
+  mutation:
+    population_size: 10
+    max_generations: 5
+    cooldown_period_h: 4
+    
+  # Logic Triggers
+  triggers:
+    periodic_h: 24
+    on_underperformance: true
+    underperformance_threshold_pct: 0.20
+    
+  # Evolution Space
+  search_space:
+    rl:
+      learning_rate: [1e-5, 1e-3]
+      exploration_epsilon: [0.05, 0.4]
+      discount_factor: [0.90, 0.99]
+    strategy:
+      rsi_threshold_low: [20, 40]
+      rsi_threshold_high: [60, 80]
+      atr_multiplier: [1.5, 3.5]

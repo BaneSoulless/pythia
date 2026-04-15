@@ -103,16 +103,25 @@ class MLMetaGate:
                 probs = self.model.predict_proba(potential_trades.values)[:, 1]
             else:
                 probs = np.random.uniform(0.4, 0.9, size=len(potential_trades))
-        except Exception as e:
+        except (ValueError, KeyError) as e:
             logger.error(
-                "ml_gate_inference_failed",
+                "ml_gate_data_mismatch",
                 error=str(e),
                 n_samples=len(potential_trades),
+            )
+            raise MLGateError(
+                code=ErrorCode.AI_PREDICTION_FAILED,
+                message=f"ML Data mismatch: {e}",
+            ) from e
+        except Exception as e:
+            logger.error(
+                "ml_gate_inference_critical_failure",
+                error=str(e),
                 exc_info=True,
             )
             raise MLGateError(
                 code=ErrorCode.AI_PREDICTION_FAILED,
-                message=f"Inference failed: {e}",
+                message=f"Inference critical failure: {e}",
             ) from e
 
         # 4. Applicazione della maschera di confidenza

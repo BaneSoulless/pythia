@@ -1,0 +1,19 @@
+# Pythia AI Trading Bot - Production Dynamic Parameters
+# Evolved via ASI-Evolve (Step 40 / Node 20)
+# Score: 0.6994 (Sharpe: 1.42, WinRate: 60.5%)
+
+rl:
+  learning_rate: 0.001
+  discount_factor: 0.97
+  exploration_epsilon: 0.07
+
+ensemble:
+  weight_rl: 0.35
+  weight_signal: 0.32
+  weight_specialized: 0.33
+  min_confidence: 0.65
+
+metadata:
+  last_updated: "2026-04-15T02:00:00Z"
+  version: "1.0.0-evolved"
+  evolution_node_id: 20

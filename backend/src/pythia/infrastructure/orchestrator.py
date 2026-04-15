@@ -13,6 +13,9 @@ import logging
 import os
 import signal
 import sys
+import yaml
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 import ccxt.async_support as ccxt
 import pandas as pd
@@ -24,6 +27,8 @@ from pythia.api.v1.health import router as health_router
 from pythia.api.v1.market_data import router as market_data_router
 from pythia.api.v1.portfolio import router as portfolio_router
 from pythia.api.v1.trades import router as trades_router
+from pythia.application.asi_evolve import ASIEvolveEngine
+from pythia.infrastructure.messaging.system_bus import SystemBus
 from pythia.infrastructure.monitoring.prometheus_exporter import get_metrics_exporter
 from pythia.infrastructure.secrets.secrets_manager import SecretsManager
 from ta.momentum import RSIIndicator
@@ -37,13 +42,46 @@ logging.basicConfig(
 logger = logging.getLogger("PYTHIA-ORCHESTRATOR")
 
 
-def create_api_app() -> FastAPI:
+class ConfigUpdateHandler(FileSystemEventHandler):
+    """Handles file system events for config hot-reload."""
+    def __init__(self, callback):
+        self.callback = callback
+
+    def on_modified(self, event):
+        if not event.is_directory and "pythia_params.yaml" in event.src_path:
+            self.callback()
+
+
+class DynamicConfigProvider:
+    """Manages hot-reloadable trading parameters."""
+    def __init__(self, config_path: str):
+        self.config_path = config_path
+        self.params = {}
+        self.load_config()
+
+    def load_config(self):
+        """Load YAML configuration from disk."""
+        try:
+            with open(self.config_path, "r") as f:
+                self.params = yaml.safe_load(f)
+            logger.info(f"[CONFIG] Loaded parameters from {self.config_path}")
+        except Exception as exc:
+            logger.error(f"[CONFIG] Failed to load config: {exc}")
+
+    def get(self, key: str, default=None):
+        return self.params.get(key, default)
+
+
+def create_api_app(config_provider: DynamicConfigProvider) -> FastAPI:
     """Create and configure FastAPI application."""
     app = FastAPI(
         title="Pythia AI Trading Bot",
         version="4.0.0",
         description="Multi-asset trading platform with AI-driven signals",
     )
+    
+    # Store config provider in app state for access from routes
+    app.state.config = config_provider
 
     # Enable CORS for local Vite dashboard
     app.add_middleware(
@@ -72,7 +110,20 @@ class PythiaSupervisor:
         self.loop = None
         self.secrets = SecretsManager(allow_key_generation=True)
         self.metrics = get_metrics_exporter()
-        self.api_app = create_api_app()
+        
+        # Initialize Dynamic Configuration
+        config_path = os.path.join(os.getcwd(), "backend", "config", "pythia_params.yaml")
+        self.config_provider = DynamicConfigProvider(config_path)
+        
+        self.api_app = create_api_app(self.config_provider)
+        
+        # Initialize Messaging & Evolution Engine
+        self.bus = SystemBus()
+        self.asi_engine = ASIEvolveEngine(event_bus=self.bus, dry_run=self.DRY_RUN)
+        
+        # Inject engine into API state for monitoring
+        self.api_app.state.asi_engine = self.asi_engine
+        
         self.PAPER_TRADING = True  # Forced YOLO paper trading mode
         self.DRY_RUN = True
         logger.warning("[ORCHESTRATOR] ⚠️ PAPER_TRADING / DRY_RUN mode ENABLED. No real orders will be placed.")
@@ -231,6 +282,31 @@ class PythiaSupervisor:
 
         await exchange.close()
 
+    async def asi_evolve_worker(self):
+        """Background worker for autonomous parameter evolution cycles."""
+        logger.info("[ORCHESTRATOR] Starting ASI-Evolve Optimization Worker...")
+        
+        # Initial wait to let other services stabilize
+        await asyncio.sleep(60)
+        
+        while not self.should_exit:
+            try:
+                # Check if we are in cooldown (handled by engine)
+                status = self.asi_engine.get_status()
+                if status["cooldown_remaining"] <= 0:
+                    await self.asi_engine.run_cycle()
+                
+                # Sleep in short intervals to remain responsive to shutdown
+                for _ in range(300): # 5-minute granularity
+                    if self.should_exit:
+                        break
+                    await asyncio.sleep(1)
+                    if self.asi_engine.cooldown_remaining > 0:
+                        self.asi_engine.cooldown_remaining -= 1
+            except Exception as exc:
+                logger.error("[ORCHESTRATOR] ASI-Evolve Worker Error: %s", exc)
+                await asyncio.sleep(300)
+
     async def run(self):
         """Start all services concurrently."""
         self._load_secrets()
@@ -244,12 +320,25 @@ class PythiaSupervisor:
                 )
 
         logger.info("[ORCHESTRATOR] Pythia v4.0 — Starting central services...")
-        await asyncio.gather(
-            self.start_api_server(),
-            self.start_metrics(),
-            self.prediction_market_worker(),
-            self.ml_dry_run_worker(),
-        )
+        
+        # Start config observer
+        observer = Observer()
+        handler = ConfigUpdateHandler(self.config_provider.load_config)
+        config_dir = os.path.dirname(self.config_provider.config_path)
+        observer.schedule(handler, config_dir, recursive=False)
+        observer.start()
+
+        try:
+            await asyncio.gather(
+                self.start_api_server(),
+                self.start_metrics(),
+                self.prediction_market_worker(),
+                self.ml_dry_run_worker(),
+                self.asi_evolve_worker(),
+            )
+        finally:
+            observer.stop()
+            observer.join()
 
     async def shutdown(self):
         """Graceful shutdown of all managed processes."""
