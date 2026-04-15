@@ -2,8 +2,7 @@
 SQLAlchemy implementations of core repository protocols.
 """
 
-from contextlib import contextmanager
-from typing import ContextManager
+from contextlib import AbstractContextManager, contextmanager
 
 from pythia.core.errors import ErrorCode, TradingError
 from pythia.core.ports.repository import IPortfolioRepository, ITradeRepository
@@ -23,7 +22,7 @@ class SqlAlchemyPortfolioRepository(IPortfolioRepository):
         return self.db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
 
     @contextmanager
-    def acquire_lock(self, portfolio_id: int) -> ContextManager[Portfolio]:
+    def acquire_lock(self, portfolio_id: int) -> AbstractContextManager[Portfolio]:
         try:
             portfolio = self.db.execute(
                 select(Portfolio)

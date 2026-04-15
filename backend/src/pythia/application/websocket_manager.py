@@ -66,8 +66,11 @@ class ConnectionManager:
         for connection in self.active_connections:
             try:
                 await connection.send_json(message)
-            except Exception as e:  # noqa: BLE001
-                logger.error("Error broadcasting to client: %s", str(e))
+            except (RuntimeError, WebSocketDisconnect):
+                # Connection is already closed or closing
+                disconnected.add(connection)
+            except Exception:  # noqa: BLE001
+                logger.exception("Unexpected error broadcasting to client")
                 disconnected.add(connection)
 
         # Clean up disconnected clients
@@ -85,8 +88,11 @@ class ConnectionManager:
         for connection in subscribers:
             try:
                 await connection.send_json(message)
-            except Exception as e:  # noqa: BLE001
-                logger.error("Error sending to subscriber: %s", str(e))
+            except (RuntimeError, WebSocketDisconnect):
+                # Connection is already closed or closing
+                disconnected.add(connection)
+            except Exception:  # noqa: BLE001
+                logger.exception("Unexpected error sending to subscriber")
                 disconnected.add(connection)
 
         # Clean up disconnected clients
@@ -186,9 +192,8 @@ async def portfolio_websocket_endpoint(websocket: WebSocket, portfolio_id: int):
 
     except WebSocketDisconnect:
         connection_manager.disconnect(websocket)
-    except Exception as e:  # noqa: BLE001
-        logger.error("WebSocket error: %s", str(e))
-
+    except Exception as e:
+        logger.exception("WebSocket error in portfolio endpoint: %s", e)
         connection_manager.disconnect(websocket)
 
 
@@ -215,8 +220,8 @@ async def market_websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         connection_manager.disconnect(websocket)
-    except Exception as e:  # noqa: BLE001
-        logger.error("WebSocket error: %s", str(e))
+    except Exception as e:  # Narrowing would require knowing all possible failures; using 'e' to satisfy some linters
+        logger.exception("WebSocket error in market endpoint: %s", e)
         connection_manager.disconnect(websocket)
 
 
@@ -247,7 +252,7 @@ async def intelligence_feed_websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:
         connection_manager.disconnect(websocket)
-    except Exception as e:  # noqa: BLE001
-        logger.error("Intelligence feed WS error: %s", str(e))
+    except Exception as e:
+        logger.exception("Intelligence feed WS error: %s", e)
         connection_manager.disconnect(websocket)
 

@@ -122,10 +122,11 @@ class FreqtradeStrategy(IStrategy):
         if dataframe.empty:
             return dataframe
 
-        from pythia.adapters.ml_gate import MLMetaGate
-        from pythia.schemas import SignalPayload
         import time
         from decimal import Decimal
+
+        from pythia.adapters.ml_gate import MLMetaGate
+        from pythia.schemas import SignalPayload
 
         # ProcessiAMO l'intero dataframe usando MLMetaGate (No Loops O(n))
         gate = MLMetaGate()

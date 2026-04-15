@@ -14,20 +14,20 @@ import os
 import signal
 import sys
 
+import ccxt.async_support as ccxt
+import pandas as pd
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pythia.adapters.ml_gate import MLMetaGate
 from pythia.api.v1.health import router as health_router
 from pythia.api.v1.market_data import router as market_data_router
 from pythia.api.v1.portfolio import router as portfolio_router
 from pythia.api.v1.trades import router as trades_router
 from pythia.infrastructure.monitoring.prometheus_exporter import get_metrics_exporter
 from pythia.infrastructure.secrets.secrets_manager import SecretsManager
-import ccxt.async_support as ccxt
-from pythia.adapters.ml_gate import MLMetaGate
-import pandas as pd
 from ta.momentum import RSIIndicator
-from ta.trend import EMAIndicator, ADXIndicator
+from ta.trend import ADXIndicator, EMAIndicator
 from ta.volatility import AverageTrueRange
 
 logging.basicConfig(

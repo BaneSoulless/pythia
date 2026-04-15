@@ -8,32 +8,28 @@ Separates Command (Write) and Query (Read) responsibilities.
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
-TResult = TypeVar("TResult")
-TCommand = TypeVar("TCommand", bound="Command")
-TQuery = TypeVar("TQuery", bound="Query")
+ResultT = TypeVar("ResultT")
+CommandT = TypeVar("CommandT", bound="Command")
+QueryT = TypeVar("QueryT", bound="Query")
 
 
 class Command(ABC):  # noqa: B024
     """Base class for all commands (Write operations)."""
 
-    pass
 
-
-class Query(Generic[TResult], ABC):
+class Query(Generic[ResultT], ABC):
     """Base class for all queries (Read operations)."""
 
-    pass
 
-
-class CommandHandler(Generic[TCommand], ABC):
+class CommandHandler(Generic[CommandT], ABC):
     @abstractmethod
     async def handle(self, command: Command) -> Any:
         pass
 
 
-class QueryHandler(Generic[TQuery, TResult], ABC):
+class QueryHandler(Generic[QueryT, ResultT], ABC):
     @abstractmethod
-    async def handle(self, query: Query) -> TResult:
+    async def handle(self, query: Query) -> ResultT:
         pass
 
 
@@ -44,13 +40,13 @@ class Mediator:
     """
 
     def __init__(self):
-        self._command_handlers = {}
-        self._query_handlers = {}
+        self._command_handlers: dict[type[Command], CommandHandler] = {}
+        self._query_handlers: dict[type[Query], QueryHandler] = {}
 
-    def register_command(self, command_type, handler: CommandHandler):
+    def register_command(self, command_type: type[Command], handler: CommandHandler):
         self._command_handlers[command_type] = handler
 
-    def register_query(self, query_type, handler: QueryHandler):
+    def register_query(self, query_type: type[Query], handler: QueryHandler):
         self._query_handlers[query_type] = handler
 
     async def send(self, command: Command) -> Any:

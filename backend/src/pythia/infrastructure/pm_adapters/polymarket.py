@@ -3,6 +3,8 @@ Abstract interface and mock implementations for Prediction Market (PM) execution
 Provides safe Paper Trading simulation interfaces following ADR-0002/SOTA resilience patterns.
 """
 
+import hashlib
+import json
 import uuid
 from abc import ABC, abstractmethod
 from typing import Any
@@ -21,24 +23,17 @@ class AbstractPredictionMarketAdapter(ABC):
     @abstractmethod
     async def fetch_markets(self, category: str | None = None) -> list[Question]:
         """Fetch available markets, optionally filtered by category."""
-        ...
 
     @abstractmethod
     async def get_market(self, market_id: str) -> Question:
         """Fetch details and current odds for a specific market."""
-        ...
 
     @abstractmethod
-    async def place_order(
-        self,
-        intent: TradeIntent,
-        allocated_amount: float
-    ) -> dict[str, Any]:
+    async def place_order(self, intent: TradeIntent, allocated_amount: float) -> dict[str, Any]:
         """
         Place an order using a fully sized and risk-checked intent.
         Must return standard receipt including execution price and exchange order ID.
         """
-        ...
 
 
 class MockPolymarketAdapter(AbstractPredictionMarketAdapter):
@@ -47,16 +42,13 @@ class MockPolymarketAdapter(AbstractPredictionMarketAdapter):
     or encountering blockchain RPC failures.
     """
 
-    def __init__(self, api_key: str = "mock-key", api_secret: str = "mock-secret"):
+    def __init__(self, api_key: str = "mock-key", api_secret: str = ""):
         self._api_key = api_key
-        self._api_secret = api_secret
+        self._api_secret = api_secret or "mock-secret-fallback"
         self.simulated_markets: dict[str, Question] = {}
 
     def _sign_payload(self, intent: TradeIntent) -> str:
         """Simulate payload signing using the secret without exposing it."""
-        import hashlib
-        import json
-
         payload_str = json.dumps(intent.model_dump(), sort_keys=True)
         signature_material = f"{payload_str}:{self._api_secret}".encode()
         signature = hashlib.sha256(signature_material).hexdigest()
@@ -73,17 +65,13 @@ class MockPolymarketAdapter(AbstractPredictionMarketAdapter):
             return self.simulated_markets[market_id]
         raise ValueError(f"Market {market_id} not found in mock state.")
 
-    async def place_order(
-        self,
-        intent: TradeIntent,
-        allocated_amount: float
-    ) -> dict[str, Any]:
+    async def place_order(self, intent: TradeIntent, allocated_amount: float) -> dict[str, Any]:
         """Simulate an order placement with deterministic JSON output."""
         logger.info(
             "Mock PM Adapter: Placing order",
             market_id=intent.market_id,
             action=intent.action,
-            amount=allocated_amount
+            amount=allocated_amount,
         )
 
         # Simulate slippage (paper assumption: perfect fill at market_implied_probability if perfectly liquid)
@@ -101,5 +89,6 @@ class MockPolymarketAdapter(AbstractPredictionMarketAdapter):
             "shares": shares_bought,
             "allocated_amount": allocated_amount,
             "fees_paid": 0.0,
-            "transaction_hash": f"0x{uuid.uuid4().hex}"
+            "transaction_hash": f"0x{uuid.uuid4().hex}",
         }
+

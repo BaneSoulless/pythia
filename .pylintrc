@@ -1,4 +1,8 @@
-[MASTER]
+﻿[MASTER]
+init-hook=
+    import os, sys
+    sys.path.insert(0, os.path.join(os.getcwd(), "backend", "src"))
+    sys.path.insert(0, os.path.join(os.getcwd(), "backend"))
 ignore=temp_repos,.venv,.runtime,__pycache__,node_modules,.git,htmlcov,.mypy_cache
 
 [MESSAGES CONTROL]
@@ -19,3 +23,4 @@ min-similarity-lines=6
 [DESIGN]
 max-args=8
 max-locals=20
+

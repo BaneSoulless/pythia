@@ -2,7 +2,8 @@
 Repository protocols for isolating domain logic from infrastructure persistence details.
 """
 
-from typing import ContextManager, Protocol
+from contextlib import AbstractContextManager
+from typing import Protocol
 
 from pythia.infrastructure.persistence.models import Portfolio, Position, Trade
 
@@ -10,7 +11,7 @@ from pythia.infrastructure.persistence.models import Portfolio, Position, Trade
 class IPortfolioRepository(Protocol):
     def get_by_id(self, portfolio_id: int) -> Portfolio | None: ...
 
-    def acquire_lock(self, portfolio_id: int) -> ContextManager[Portfolio]: ...
+    def acquire_lock(self, portfolio_id: int) -> AbstractContextManager[Portfolio]: ...
 
 
 class ITradeRepository(Protocol):
