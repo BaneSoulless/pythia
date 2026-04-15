@@ -1,0 +1,37 @@
+name: ASI-Evolve Re-run Check
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # every day at 06:00 UTC
+  workflow_dispatch:        # manual trigger
+
+jobs:
+  check-data-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -e "backend[dev]"
+
+      - name: Check if real trade data is ready
+        id: datacheck
+        run: |
+          python scripts/asi_rerun_with_real_data.py --check
+          echo "ready=$?" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Report readiness
+        run: |
+          if [ "${{ steps.datacheck.outputs.ready }}" = "0" ]; then
+            echo "✅ DATA READY — manual re-run can be triggered"
+            echo "Run: python scripts/asi_rerun_with_real_data.py --run"
+          else
+            echo "⏳ DATA NOT READY — insufficient live trades"
+          fi

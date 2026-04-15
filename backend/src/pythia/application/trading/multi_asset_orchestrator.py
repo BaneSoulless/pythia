@@ -5,7 +5,12 @@ Dispatches trades through the correct adapter based on AssetClass.
 Uses EventBus for side effects and Celery for async execution.
 """
 
+import asyncio
 import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pythia.application.shadow_evaluator import ShadowEvaluator
 
 from pythia.core.ports import (
     AIInferencePort,
@@ -43,6 +48,7 @@ class MultiAssetOrchestrator:
         self.max_position_pct = max_position_pct
         self.min_confidence = min_confidence
         self._event_handlers: list = []
+        self.shadow_evaluator: ShadowEvaluator | None = None
 
     def register_event_handler(self, handler):
         """Register a handler for post-trade domain events."""
@@ -114,6 +120,23 @@ class MultiAssetOrchestrator:
             result.get("price", "market"),
             signal.asset_class.value,
         )
+
+        # --- Shadow evaluator hook ---
+        if self.shadow_evaluator and self.shadow_evaluator.active:
+            trade_pnl = result.get("pnl", 0.0)
+            shadow_dec = self.shadow_evaluator.evaluate(
+                signal_score=signal.confidence,
+                rl_score=signal.confidence,
+                specialized_score=signal.confidence,
+            )
+            asyncio.ensure_future(
+                self.shadow_evaluator.record_outcome(
+                    shadow_decision=shadow_dec,
+                    actual_pnl=trade_pnl,
+                    actual_win=trade_pnl > 0,
+                )
+            )
+
         return {
             "status": "executed",
             "pair": signal.pair,

@@ -28,6 +28,7 @@ from pythia.api.v1.market_data import router as market_data_router
 from pythia.api.v1.portfolio import router as portfolio_router
 from pythia.api.v1.trades import router as trades_router
 from pythia.application.asi_evolve import ASIEvolveEngine
+from pythia.application.shadow_evaluator import ShadowEvaluator
 from pythia.infrastructure.messaging.system_bus import SystemBus
 from pythia.infrastructure.monitoring.prometheus_exporter import get_metrics_exporter
 from pythia.infrastructure.secrets.secrets_manager import SecretsManager
@@ -120,6 +121,9 @@ class PythiaSupervisor:
         # Initialize Messaging & Evolution Engine
         self.bus = SystemBus()
         self.asi_engine = ASIEvolveEngine(event_bus=self.bus, dry_run=self.DRY_RUN)
+        
+        # Shadow evaluator for parallel evolved-config testing
+        self.shadow_evaluator = ShadowEvaluator(asi_engine=self.asi_engine)
         
         # Inject engine into API state for monitoring
         self.api_app.state.asi_engine = self.asi_engine
@@ -282,27 +286,56 @@ class PythiaSupervisor:
 
         await exchange.close()
 
+    def _get_current_metrics(self) -> dict:
+        """Collect live trading performance metrics for evolution triggering."""
+        try:
+            # Attempt to read from Prometheus exporter or portfolio state
+            return {
+                "trade_count": getattr(self.metrics, "total_trades", 0),
+                "sharpe": getattr(self.metrics, "sharpe_ratio", 0.0),
+                "drawdown": getattr(self.metrics, "current_drawdown", 0.0),
+            }
+        except Exception:
+            return {"trade_count": 0, "sharpe": 0.0, "drawdown": 0.0}
+
     async def asi_evolve_worker(self):
-        """Background worker for autonomous parameter evolution cycles."""
+        """Background worker for autonomous parameter evolution cycles.
+
+        Every 60s:
+        1. Tick the cooldown counter
+        2. Check should_evolve with live metrics
+        3. If triggered, schedule run_cycle in background
+        """
         logger.info("[ORCHESTRATOR] Starting ASI-Evolve Optimization Worker...")
-        
+
         # Initial wait to let other services stabilize
         await asyncio.sleep(60)
-        
+
         while not self.should_exit:
             try:
-                # Check if we are in cooldown (handled by engine)
-                status = self.asi_engine.get_status()
-                if status["cooldown_remaining"] <= 0:
-                    await self.asi_engine.run_cycle()
-                
-                # Sleep in short intervals to remain responsive to shutdown
-                for _ in range(300): # 5-minute granularity
+                # --- Tick cooldown (60s per iteration) ---
+                if self.asi_engine.cooldown_remaining > 0:
+                    self.asi_engine.cooldown_remaining = max(
+                        0, self.asi_engine.cooldown_remaining - 60
+                    )
+
+                # --- Check if evolution is warranted ---
+                current_metrics = self._get_current_metrics()
+                if (
+                    self.asi_engine.cooldown_remaining <= 0
+                    and self.asi_engine.should_evolve(current_metrics)
+                ):
+                    asyncio.ensure_future(self.asi_engine.run_cycle())
+                    logger.info(
+                        "[ORCHESTRATOR] ASI evolution cycle scheduled — metrics: %s",
+                        current_metrics,
+                    )
+
+                # Sleep 60s in 1s increments for responsive shutdown
+                for _ in range(60):
                     if self.should_exit:
                         break
                     await asyncio.sleep(1)
-                    if self.asi_engine.cooldown_remaining > 0:
-                        self.asi_engine.cooldown_remaining -= 1
             except Exception as exc:
                 logger.error("[ORCHESTRATOR] ASI-Evolve Worker Error: %s", exc)
                 await asyncio.sleep(300)
