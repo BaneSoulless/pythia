@@ -94,7 +94,38 @@ class MultiAssetOrchestrator:
             logger.info("Market closed for %s — deferring", signal.asset_class.value)
             return {"status": "deferred", "reason": "market_closed"}
 
-        quantity = self._calculate_position_size(signal)
+        # Fetch price for quantity calculation
+        try:
+            ticker = await port.fetch_ticker(signal.pair)
+            current_price = getattr(ticker, "price", ticker.get("price", 0.0) if isinstance(ticker, dict) else 0.0)
+        except Exception:
+            current_price = 0.0
+
+        from pythia.application.monthly_target_tracker import MonthlyTargetTracker
+        from pythia.infrastructure.persistence.database import SessionLocal
+        from pythia.infrastructure.trading_mode_router import is_paper_mode
+
+        db_session = SessionLocal()
+        try:
+            tracker = MonthlyTargetTracker(
+                db=db_session,
+                initial_capital=self._get_initial_capital(port),
+                is_paper=is_paper_mode(),
+            )
+            quantity = tracker.get_position_size(
+                current_capital=self._get_current_capital(port),
+                price=current_price,
+            )
+        finally:
+            db_session.close()
+
+        if quantity == 0.0:
+            logger.warning(
+                "trade_blocked_capital_preservation_or_zero_price",
+                symbol=signal.pair,
+            )
+            return {"status": "skipped", "reason": "capital_preservation"}
+
         result = await port.place_order(
             symbol=signal.pair,
             side=signal.action.lower(),
@@ -168,12 +199,23 @@ class MultiAssetOrchestrator:
 
         Kelly fraction = confidence * edge_factor.
         Half-Kelly reduces variance while maintaining positive EV.
+        DEPRECATED: Now handled by MonthlyTargetTracker.
         """
         kelly_fraction = signal.confidence * 0.5
         min_size = 10.0
         max_size = 1000.0
         raw_size = kelly_fraction * max_size
         return max(min_size, min(raw_size, max_size))
+
+    def _get_current_capital(self, port) -> float:
+        if hasattr(port, "get_session_summary"):
+            return port.get_session_summary().get("current_capital", 10000.0)
+        return 10000.0
+
+    def _get_initial_capital(self, port) -> float:
+        if hasattr(port, "get_session_summary"):
+            return port.get_session_summary().get("initial_capital", 10000.0)
+        return 10000.0
 
     async def _emit(self, event):
         """Emit domain event to all registered handlers."""

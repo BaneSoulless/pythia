@@ -212,6 +212,21 @@ class PaperTradingBroker(TradingPort):
         self._update_session_stats(pnl=float(pnl), is_win=is_win)
         self.db.commit()
 
+        # Aggiorna monthly target tracker
+        from pythia.application.monthly_target_tracker import MonthlyTargetTracker
+        session_summary = self.get_session_summary()
+        tracker = MonthlyTargetTracker(
+            db=self.db,
+            initial_capital=session_summary.get("initial_capital", 10000.0),
+            is_paper=True,
+        )
+        tracker.update_after_trade(
+            current_capital=session_summary.get("current_capital", 10000.0),
+            trade_count=session_summary.get("total_trades", 0),
+            win_rate=session_summary.get("win_rate", 0.5),
+            avg_win_loss_ratio=1.2,  # TODO: calcola da trade history reale
+        )
+
         logger.info(
             "paper_position_closed",
             symbol=symbol,

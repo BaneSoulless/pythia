@@ -119,6 +119,8 @@ class TestPaperTradingBroker:
         broker.db.execute.return_value.fetchone.side_effect = [
             (1, "50000.0", "0.001", "BUY"),
             (1, 1, 1.0, 10001.0, 10000.0, 0.0, 0.0, False),
+            (1,),
+            (1, 1, 1.0, 10001.0, 10000.0, 0.0, 0.0, False),
         ]
         result = await broker.close_position(symbol="BTCUSD", exit_price=51000.0)
         assert result["is_win"] is True

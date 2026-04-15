@@ -36,11 +36,29 @@ async def get_paper_status(db: Session = Depends(get_db)):
     win_rate = summary.get("win_rate", 0)
     total_pnl = summary.get("total_pnl", 0)
 
+    from pythia.application.monthly_target_tracker import MonthlyTargetTracker
+    tracker = MonthlyTargetTracker(
+        db=db,
+        initial_capital=summary.get("initial_capital", 10000.0),
+        is_paper=True,
+    )
+    monthly_check = tracker.is_promote_eligible_monthly()
+
     promote_checks = {
         "trades_ok": total_trades >= settings_thresholds["min_trades"],
         "win_rate_ok": win_rate >= settings_thresholds["min_win_rate"],
         "pnl_ok": total_pnl > 0,
+        "monthly_ok": monthly_check.get("eligible", False),
     }
+    
+    gates = {
+        "monthly_return": {
+            "required": ">=8% run-rate (80% of 10% target)",
+            "actual": f"{monthly_check.get('effective_return_pct', 0):.2f}%",
+            "passed": monthly_check.get("eligible", False),
+        }
+    }
+    
     promote_ready = all(promote_checks.values())
 
     return {
@@ -49,6 +67,7 @@ async def get_paper_status(db: Session = Depends(get_db)):
         "session": summary,
         "thresholds": settings_thresholds,
         "promote_checks": promote_checks,
+        "advanced_gates": gates,
         "promote_ready": promote_ready,
         "next_action": (
             "promote_evolved_config() then set TRADING_MODE=live"
@@ -80,4 +99,47 @@ async def get_paper_trades(
     return {
         "count": len(rows),
         "trades": [dict(r._mapping) for r in rows],
+    }
+
+from datetime import datetime, timezone
+
+@router.get("/monthly")
+async def get_monthly_target(db: Session = Depends(get_db)):
+    """
+    Returns current month progress toward +10% target.
+    Includes Kelly factor, sizing mode, and projected end-of-month return.
+    """
+    from pythia.application.monthly_target_tracker import MonthlyTargetTracker
+    from pythia.infrastructure.trading_mode_router import get_broker
+    broker = get_broker(db_session=db)
+    summary = broker.get_session_summary()
+
+    tracker = MonthlyTargetTracker(
+        db=db,
+        initial_capital=summary.get("initial_capital", 10000.0),
+        is_paper=is_paper_mode(),
+    )
+    monthly = tracker.is_promote_eligible_monthly()
+    from sqlalchemy import text
+    row = db.execute(
+        text("""
+            SELECT actual_return_pct, run_rate_pct, status,
+                   kelly_factor, sizing_mode, total_trades
+            FROM monthly_target_log
+            WHERE year_month=:ym AND is_paper=:ip
+        """),
+        {"ym": datetime.now(timezone.utc).strftime("%Y-%m"), "ip": is_paper_mode()},
+    ).fetchone()
+
+    return {
+        "target": "+10%/month",
+        "current_month": datetime.now(timezone.utc).strftime("%Y-%m"),
+        "actual_return_pct": float(row[0] or 0) * 100 if row else 0,
+        "run_rate_pct": float(row[1] or 0) * 100 if row else 0,
+        "status": row[2] if row else "no_data",
+        "kelly_factor": float(row[3] or 0) if row else 0,
+        "sizing_mode": row[4] if row else "unknown",
+        "total_trades": row[5] if row else 0,
+        "promote_eligible": monthly,
+        "capital": summary,
     }
