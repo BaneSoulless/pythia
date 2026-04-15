@@ -243,12 +243,20 @@ class PaperTradingBroker(TradingPort):
         metrics = get_metrics_exporter()
         metrics.record_paper_trade(symbol, side.upper(), is_win)
 
-        summary = self.get_session_summary()
         metrics.update_paper_session(
             pnl=summary.get("total_pnl", 0.0),
             win_rate=summary.get("win_rate", 0.0),
             eligible=summary.get("promote_eligible", False)
         )
+
+        # ── TRIGGER EVOLUTION FEEDBACK ──
+        try:
+            from pythia.application.evolution_feedback import EvolutionFeedbackScheduler
+            feedback = EvolutionFeedbackScheduler(self.db)
+            # Controlla se è necessario attivare una re-evoluzione (es. ogni 50 trade)
+            feedback.check_and_trigger()
+        except Exception as e:
+            logger.error("paper_broker_feedback_trigger_failed", error=str(e))
 
         return {
             "trade_id": trade_id,

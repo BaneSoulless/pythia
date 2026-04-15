@@ -88,6 +88,36 @@ class ASIEvolveEngine:
             )
             
             if node:
+                # Monthly target reward override (se env var settata)
+                if os.environ.get("ASI_REWARD_FUNCTION") == "monthly_target_reward":
+                    metrics = node.results
+                    _trade_count = getattr(metrics, 'trade_count', 0) if metrics else 0
+                    if _trade_count >= 20:
+                        _monthly_ret = getattr(metrics, 'monthly_return', 0.0)
+                        _monthly_std = getattr(metrics, 'monthly_std_dev', 0.05)
+                        _asset_cls = os.environ.get("ASI_ASSET_CLASS", "CRYPTO")
+                        
+                        # Calcola sharpe/win/dd dai metadati del nodo se non in metrics
+                        _sharpe = getattr(metrics, 'sharpe', node.results.get('sharpe_ratio', 0.0))
+                        _win = getattr(metrics, 'win_rate', node.results.get('win_rate', 0.0))
+                        _dd = getattr(metrics, 'drawdown', node.results.get('max_drawdown', 0.0))
+
+                        _new_score = ASIEvolveEngine._monthly_target_reward(
+                            monthly_return=_monthly_ret,
+                            sharpe_ratio=_sharpe,
+                            win_rate=_win,
+                            max_drawdown=_dd,
+                            monthly_std_dev=_monthly_std,
+                            asset_class=_asset_cls,
+                        )
+                        logger.warning(
+                            "monthly_target_reward_override",
+                            old_score=node.score,
+                            new_score=_new_score,
+                            trade_count=_trade_count,
+                        )
+                        node.score = _new_score
+
                 self.mutation_count += 1
                 self.last_evolution = datetime.now()
                 self.last_cycle_status = "success"
@@ -247,3 +277,65 @@ class ASIEvolveEngine:
             f"evolved_config_promoted - win_rate: {win_rate}, avg_pnl: {avg_pnl}, trades: {len(trades)}"
         )
         return True
+    @staticmethod
+    def _monthly_target_reward(
+        monthly_return: float,
+        sharpe_ratio: float,
+        win_rate: float,
+        max_drawdown: float,
+        monthly_std_dev: float,
+        asset_class: str = "CRYPTO",
+    ) -> float:
+        """
+        Reward function calibrata su target +10%/mese multi-asset.
+        
+        Componenti:
+        - monthly_return: rendimento mensile effettivo (es. 0.12 = 12%)
+        - sharpe_ratio: Sharpe annualizzato
+        - win_rate: percentuale trade vincenti (es. 0.55 = 55%)
+        - max_drawdown: massimo drawdown (es. 0.08 = 8%, positivo)
+        - monthly_std_dev: deviazione standard dei ritorni mensili
+        - asset_class: CRYPTO | STOCK | PREDICTION_MARKET
+        
+        Sigmoid centrata su valori target:
+        - monthly_return target: 10% → sigmoid(0) = 0.5 (neutro)
+        - sopra target → score > 0.5
+        - sotto target → score < 0.5
+        """
+        import math
+
+        def sigmoid(x: float) -> float:
+            # Clamp per evitare overflow su input estremi
+            x = max(-500.0, min(500.0, x))
+            return 1.0 / (1.0 + math.exp(-x))
+
+        monthly_score = sigmoid((monthly_return - 0.10) / 0.02)
+        sharpe_score = sigmoid((sharpe_ratio - 1.5) / 0.5)
+        win_score = sigmoid((win_rate - 0.50) / 0.05)
+        drawdown_score = sigmoid((-max_drawdown + 0.10) / 0.03)
+        consistency_score = sigmoid((-monthly_std_dev + 0.05) / 0.02)
+
+        weights = {
+            "CRYPTO": {
+                "monthly": 0.35, "sharpe": 0.25, "win": 0.20,
+                "drawdown": 0.10, "consistency": 0.10,
+            },
+            "STOCK": {
+                "monthly": 0.35, "sharpe": 0.15, "win": 0.15,
+                "drawdown": 0.15, "consistency": 0.20,
+            },
+            "PREDICTION_MARKET": {
+                "monthly": 0.35, "sharpe": 0.10, "win": 0.30,
+                "drawdown": 0.10, "consistency": 0.15,
+            },
+        }
+        w = weights.get(asset_class.upper(), weights["CRYPTO"])
+
+        score = (
+            w["monthly"] * monthly_score
+            + w["sharpe"] * sharpe_score
+            + w["win"] * win_score
+            + w["drawdown"] * drawdown_score
+            + w["consistency"] * consistency_score
+        )
+        return round(score, 6)

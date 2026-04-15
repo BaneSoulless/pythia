@@ -68,12 +68,55 @@ def run_evolution(steps: int = 40, sample_n: int = 5) -> int:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Re-run ASI-Evolve with optional warm-start data"
+    )
+    parser.add_argument(
+        "--warmstart",
+        type=str,
+        default=None,
+        help="Path to warmstart_trades.json from paper trading history",
+    )
+    parser.add_argument(
+        "--reward",
+        type=str,
+        default="default",
+        choices=["default", "monthly_target_reward"],
+        help="Reward function to use for this evolution run",
+    )
+    parser.add_argument(
+        "--asset-class",
+        type=str,
+        default="CRYPTO",
+        choices=["CRYPTO", "STOCK", "PREDICTION_MARKET"],
+        help="Asset class for reward function weighting",
+    )
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--run", action="store_true")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--steps", type=int, default=40)
     args = parser.parse_args()
+
+    import json
+    import os
+
+    # Carica warmstart se fornito
+    warmstart_trades = []
+    if args.warmstart and os.path.exists(args.warmstart):
+        with open(args.warmstart) as f:
+            data = json.load(f)
+            warmstart_trades = data.get("trades", [])
+        print(f"[WARMSTART] Loaded {len(warmstart_trades)} trades from {args.warmstart}")
+        os.environ["ASI_WARMSTART_TRADES"] = json.dumps(warmstart_trades[:50])  # top 50
+    else:
+        if args.warmstart:
+            print(f"[WARNING] warmstart file not found: {args.warmstart}")
+        print("[INFO] Running evolution without warmstart")
+
+    # Setta la reward function come env var per ASI-Evolve
+    os.environ["ASI_REWARD_FUNCTION"] = args.reward
+    os.environ["ASI_ASSET_CLASS"] = args.asset_class
+    print(f"[CONFIG] reward={args.reward}, asset_class={args.asset_class}")
 
     status = check_data_readiness()
     print(f"[DATA] {status}")
