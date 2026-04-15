@@ -244,9 +244,9 @@ class PaperTradingBroker(TradingPort):
         metrics.record_paper_trade(symbol, side.upper(), is_win)
 
         metrics.update_paper_session(
-            pnl=summary.get("total_pnl", 0.0),
-            win_rate=summary.get("win_rate", 0.0),
-            eligible=summary.get("promote_eligible", False)
+            pnl=session_summary.get("total_pnl", 0.0),
+            win_rate=session_summary.get("win_rate", 0.0),
+            eligible=session_summary.get("promote_eligible", False)
         )
 
         # ── TRIGGER EVOLUTION FEEDBACK ──

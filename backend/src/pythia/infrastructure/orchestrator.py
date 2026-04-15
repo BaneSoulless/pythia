@@ -109,6 +109,7 @@ class PythiaSupervisor:
     """Supervises all Pythia services with graceful shutdown."""
 
     def __init__(self):
+        self.DRY_RUN: bool = os.environ.get("TRADING_MODE", "paper").lower() != "live"
         self.should_exit = False
         self.loop = None
         self.secrets = SecretsManager(allow_key_generation=True)
@@ -131,7 +132,6 @@ class PythiaSupervisor:
         self.api_app.state.asi_engine = self.asi_engine
         
         self.PAPER_TRADING = True  # Forced YOLO paper trading mode
-        self.DRY_RUN = True
 
         # Log trading mode from TradingModeRouter
         from pythia.infrastructure.trading_mode_router import get_trading_mode

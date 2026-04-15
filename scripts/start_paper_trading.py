@@ -45,13 +45,20 @@ def main():
     ]
     
     try:
-        # Usiamo subprocess.run per bloccare finché non viene terminato (CTRL+C)
-        subprocess.run(cmd, check=True, cwd=root_dir)
+        import os as _os
+        _env = {**_os.environ}
+        _root = Path(".").resolve()
+        _env["PYTHONPATH"] = _os.pathsep.join([
+            str(_root / "vendor"),
+            str(_root / "backend" / "src"),
+            str(_root / "backend"),
+            _env.get("PYTHONPATH", ""),
+        ])
+        print(f"[START] {' '.join(cmd)}\n")
+        result = subprocess.run(cmd, env=_env, check=False)
+        sys.exit(result.returncode)
     except KeyboardInterrupt:
         print("\n🛑 Paper trading arrestato dall'utente.")
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Errore durante l'esecuzione: {e}")
-        sys.exit(1)
     except Exception as e:
         print(f"❌ Errore inaspettato: {e}")
         sys.exit(1)
