@@ -50,8 +50,18 @@ class PaperTradingBroker(TradingPort):
             str(getattr(settings, "PAPER_INITIAL_CAPITAL", 10000.0))
         )
 
-        api_key = getattr(settings, "ALPACA_PAPER_API_KEY", "") or settings.ALPACA_API_KEY
-        secret_key = getattr(settings, "ALPACA_PAPER_SECRET_KEY", "") or settings.ALPACA_SECRET_KEY
+        api_key = (
+            getattr(settings, "ALPACA_PAPER_API_KEY", "")
+            or getattr(settings, "ALPACA_API_KEY", "")
+            or getattr(settings, "EXCHANGE_API_KEY", "")
+            or ""
+        )
+        secret_key = (
+            getattr(settings, "ALPACA_PAPER_SECRET_KEY", "")
+            or getattr(settings, "ALPACA_SECRET_KEY", "")
+            or getattr(settings, "EXCHANGE_SECRET_KEY", "")
+            or ""
+        )
 
         self._client = TradingClient(
             api_key=api_key,
