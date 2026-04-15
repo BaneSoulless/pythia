@@ -26,16 +26,21 @@ KELLY_FLOOR_PCT = 0.005        # mai meno dello 0.5%
 DRAWDOWN_PRESERVATION_THRESHOLD = -0.10  # -10% mensile → capital preservation
 
 
+from pythia.core.asset_class import AssetClass, get_asset_class_config
+
 class MonthlyTargetTracker:
     def __init__(
         self,
         db: Session,
         initial_capital: float,
         is_paper: bool = True,
+        asset_class: AssetClass = AssetClass.CRYPTO,
     ) -> None:
         self.db = db
         self.initial_capital = Decimal(str(initial_capital))
         self.is_paper = is_paper
+        self.asset_class = asset_class
+        self.asset_cfg = get_asset_class_config(asset_class)
         self.year_month = datetime.now(timezone.utc).strftime("%Y-%m")
         self._ensure_month_record()
 
@@ -72,6 +77,67 @@ class MonthlyTargetTracker:
                 capital=float(self.initial_capital),
             )
 
+    def _calculate_sharpe(
+        self,
+        symbol_filter: Optional[str] = None,
+    ) -> Optional[float]:
+        """
+        Calcola Sharpe ratio annualizzato usando pnl_pct dalla
+        paper_trades table per il mese corrente e asset class corrente.
+
+        Usa risk-free rate 2% annuo da backtest_engine.py convention.
+        Annualizzazione: self.asset_cfg.sharpe_annualization_factor
+
+        Restituisce None se meno di 2 trade chiusi.
+        """
+        import math as _math
+        from sqlalchemy import text
+
+        # Costruisci query con filtro opzionale su symbol
+        query = """
+            SELECT pnl_pct FROM paper_trades
+            WHERE session_id = :sid
+              AND closed_at IS NOT NULL
+              AND pnl_pct IS NOT NULL
+        """
+        params: dict = {"sid": self.db.execute(
+            text("""
+                SELECT id FROM paper_sessions
+                WHERE status='active'
+                ORDER BY started_at DESC LIMIT 1
+            """)
+        ).scalar()}
+
+        if params[list(params.keys())[0]] is None:
+            return None
+
+        if symbol_filter:
+            query += " AND symbol = :sym"
+            params["sym"] = symbol_filter
+
+        rows = self.db.execute(text(query), params).fetchall()
+        pnl_pcts = [float(r[0]) / 100.0 for r in rows]  # converti % → ratio
+
+        n = len(pnl_pcts)
+        if n < 2:
+            return None
+
+        mean_r = sum(pnl_pcts) / n
+        variance = sum((r - mean_r) ** 2 for r in pnl_pcts) / (n - 1)
+        std_r = _math.sqrt(variance) if variance > 0 else 0.0
+
+        if std_r == 0.0:
+            return None
+
+        # Risk-free rate per-trade (2% annuo / trading_days / trades_per_day)
+        # Stima conservativa: 1 trade per trading day
+        rf_per_trade = 0.02 / self.asset_cfg.trading_days_per_year
+        excess_return = mean_r - rf_per_trade
+
+        # Sharpe annualizzato
+        sharpe = (excess_return / std_r) * self.asset_cfg.sharpe_annualization_factor
+        return round(sharpe, 4)
+
     def update_after_trade(
         self,
         current_capital: float,
@@ -99,7 +165,7 @@ class MonthlyTargetTracker:
         target_progress = actual_return / TARGET_MONTHLY_RETURN  # 0.0 → 1.0
 
         # Determina status
-        if actual_return <= DRAWDOWN_PRESERVATION_THRESHOLD:
+        if actual_return <= self.asset_cfg.capital_preservation_threshold:
             status = "capital_preservation"
         elif target_progress >= 1.0:
             status = "ahead"
@@ -130,9 +196,12 @@ class MonthlyTargetTracker:
 
         # Hard caps
         kelly_factor = max(
-            KELLY_FLOOR_PCT,
-            min(kelly_factor, KELLY_MAX_PCT),
+            self.asset_cfg.kelly_floor_pct,
+            min(kelly_factor, self.asset_cfg.kelly_max_pct),
         )
+
+        # Calcola Sharpe prima dell'UPDATE
+        sharpe = self._calculate_sharpe()
 
         self.db.execute(
             text("""
@@ -144,6 +213,7 @@ class MonthlyTargetTracker:
                   total_trades=:trades,
                   kelly_factor=:kf,
                   sizing_mode=:sm,
+                  sharpe_ratio=:sharpe,
                   last_updated=:ts
                 WHERE year_month=:ym AND is_paper=:ip
             """),
@@ -155,6 +225,7 @@ class MonthlyTargetTracker:
                 "trades": trade_count,
                 "kf": round(kelly_factor, 6),
                 "sm": sizing_mode,
+                "sharpe": sharpe,
                 "ts": now,
                 "ym": self.year_month,
                 "ip": self.is_paper,
@@ -173,6 +244,7 @@ class MonthlyTargetTracker:
             "kelly_factor": round(kelly_factor, 4),
             "sizing_mode": sizing_mode,
             "days_remaining": days_remaining,
+            "sharpe_ratio": sharpe,
         }
 
         logger.info("monthly_target_updated", **result)
@@ -198,12 +270,12 @@ class MonthlyTargetTracker:
         self,
         current_capital: float,
         price: float,
+        asset_class: Optional[AssetClass] = None,
     ) -> float:
-        """
-        Restituisce la qty in asset da acquistare dato il kelly_factor corrente.
-        position_value = current_capital * kelly_factor
-        qty = position_value / price
-        """
+        import math as _math
+        cfg = get_asset_class_config(
+            asset_class or self.asset_class
+        )
         row = self.db.execute(
             text("""
                 SELECT kelly_factor, status FROM monthly_target_log
@@ -219,18 +291,14 @@ class MonthlyTargetTracker:
             )
             return 0.0
 
-        kelly_factor = float(row[0] or KELLY_FLOOR_PCT)
+        kelly_factor = float(row[0] or cfg.kelly_floor_pct)
         position_value = current_capital * kelly_factor
-        qty = position_value / price if price > 0 else 0.0
+        raw_qty = position_value / price if price > 0 else 0.0
 
-        logger.info(
-            "position_size_calculated",
-            capital=current_capital,
-            kelly=kelly_factor,
-            price=price,
-            qty=round(qty, 8),
-        )
-        return round(qty, 8)
+        if cfg.fractional_qty:
+            return round(raw_qty, 8)
+        else:
+            return float(_math.floor(raw_qty))  # intero per stock e PM
 
     def is_promote_eligible_monthly(self) -> dict:
         """

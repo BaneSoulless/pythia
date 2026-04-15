@@ -214,11 +214,15 @@ class PaperTradingBroker(TradingPort):
 
         # Aggiorna monthly target tracker
         from pythia.application.monthly_target_tracker import MonthlyTargetTracker
+        from pythia.core.asset_class import infer_asset_class
+        _asset_class = infer_asset_class(symbol)
+        
         session_summary = self.get_session_summary()
         tracker = MonthlyTargetTracker(
             db=self.db,
             initial_capital=session_summary.get("initial_capital", 10000.0),
             is_paper=True,
+            asset_class=_asset_class,
         )
         tracker.update_after_trade(
             current_capital=session_summary.get("current_capital", 10000.0),

@@ -70,3 +70,17 @@ def get_broker(db_session=None):
         secret_key=getattr(settings, "ALPACA_SECRET_KEY", getattr(settings, "EXCHANGE_SECRET_KEY", "unconfigured")),
         paper=False,
     )
+
+
+def get_broker_for_asset_class(asset_class: "AssetClass", db_session=None):
+    """Returns the correct broker for a given asset class."""
+    from pythia.core.asset_class import AssetClass
+    if asset_class == AssetClass.PREDICTION_MARKET:
+        from pythia.infrastructure.brokers.prediction_market_adapter import (
+            PredictionMarketAdapter,
+        )
+        pm_broker = os.getenv("PM_BROKER", "polymarket")
+        return PredictionMarketAdapter(broker=pm_broker)
+    # CRYPTO e STOCK: usa il broker standard (Alpaca paper/live)
+    return get_broker(db_session=db_session)
+
