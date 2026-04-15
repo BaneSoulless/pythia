@@ -10,6 +10,7 @@ dependencies = [
     "streamlit",
     "sqlalchemy",
     "redis",
+    "structlog",
     "groq",
     "weaviate-client",
     "chromadb",
@@ -17,6 +18,20 @@ dependencies = [
     "sentence-transformers>=2.0",
     "faiss-cpu>=1.7",
     "openai",
+    "PyYAML>=6.0",
+    "watchdog>=4.0",
+    "prometheus-client>=0.20",
+    "python-jose[cryptography]",
+    "pydantic[email]",
+    "python-multipart",
+    "yfinance",
+    "slowapi",
+    "pydantic-settings",
+    "alpaca-py",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-sqlalchemy",
 ]
 
 [tool.pytest.ini_options]
